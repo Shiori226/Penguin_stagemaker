@@ -17,9 +17,13 @@ namespace StageMaker
 
         // パレットに表示しない (= ユーザが配置できない) 内部パーツ
         // Start / Goal は固定位置・Shark は周辺の海に自動配置
+        // Gold Fish / Moving Ice / Round Trip Ice / Wind 系は StageEditor で配置させない
         private static readonly HashSet<string> InternalPartIds = new HashSet<string>
         {
-            "PlatformStart", "PlatformGoal", "Shark"
+            "PlatformStart", "PlatformGoal", "Shark", "FishGold",
+            "MovingIceSmall", "MovingIceLarge",
+            "MovingIcePingPongSmall", "MovingIcePingPongLarge",
+            "BlizzardOctagon", "BlizzardHexagon"
         };
 
         private StageMakerSceneController controller;
