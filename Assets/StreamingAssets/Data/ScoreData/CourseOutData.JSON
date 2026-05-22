@@ -1,0 +1,10 @@
+{
+    "CourseOut": {
+        "baseScore": -200.0,
+        "displayColor" : { "r":30,"g":80,"b":255,"a":255 },
+        "shouldShowInResult" : true,
+        "resultLabel" : "Course Out",
+        "gradeCategory" : "CourseOut",
+        "gradeCap" : 7
+    }
+}

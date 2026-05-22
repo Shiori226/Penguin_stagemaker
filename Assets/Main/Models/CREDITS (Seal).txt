@@ -1,0 +1,4 @@
+This project includes the following 3D model:
+
+"Seal" (https://skfb.ly/6SCyL) by rkuhlf  
+Licensed under Creative Commons Attribution 4.0 International (http://creativecommons.org/licenses/by/4.0/).

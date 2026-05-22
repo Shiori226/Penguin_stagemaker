@@ -1,0 +1,175 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7a1b3c5d00020000000000000000aaaa, type: 3}
+  m_Name: StagePartCatalog
+  m_EditorClassIdentifier:
+  parts:
+  - id: PlatformStart
+    displayName: Start
+    category: 4
+    paletteColor: {r: 0.4, g: 0.9, b: 0.4, a: 1}
+    prefab: {fileID: 6565205407785877560, guid: 15db12ef63db2194081a2242d51cd51f, type: 3}
+    unique: 1
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: PlatformGoal
+    displayName: Goal
+    category: 4
+    paletteColor: {r: 1.0, g: 0.85, b: 0.2, a: 1}
+    prefab: {fileID: 6684823358633077182, guid: 07c93799898f28e4d82c0d5456a05261, type: 3}
+    unique: 1
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: Shark
+    displayName: Shark
+    category: 2
+    paletteColor: {r: 0.85, g: 0.2, b: 0.3, a: 1}
+    prefab: {fileID: 5869206836951269302, guid: c90bc4a681017e946b0d1dfce2115759, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: PlatformOctagon
+    displayName: Octagon
+    category: 0
+    paletteColor: {r: 0.75, g: 0.85, b: 1.0, a: 1}
+    prefab: {fileID: 7837812876631044051, guid: 05cc18064cbca384682d4b19daa0ef24, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: PlatformHexagon
+    displayName: Hexagon
+    category: 0
+    paletteColor: {r: 0.7, g: 0.8, b: 0.95, a: 1}
+    prefab: {fileID: 7022636723760393514, guid: c9fcaf0b58600564e9dda2cf0e1ae521, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: PlatformOctagonHole
+    displayName: Octagon (Hole)
+    category: 0
+    paletteColor: {r: 0.55, g: 0.6, b: 0.75, a: 1}
+    prefab: {fileID: 257486147410012505, guid: 3166afc8121ead042a8007cacb461ed0, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: PlatformHexagonHole
+    displayName: Hexagon (Hole)
+    category: 0
+    paletteColor: {r: 0.5, g: 0.55, b: 0.7, a: 1}
+    prefab: {fileID: 7880116548906662855, guid: e697f70b20279364c927618d75d9af83, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: Fish
+    displayName: Fish
+    category: 1
+    paletteColor: {r: 0.2, g: 0.6, b: 1.0, a: 1}
+    prefab: {fileID: 4384204778755725665, guid: 6b5c3d6b3ecdbd3479b1fd239b6c9d2a, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0.4, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: FishGold
+    displayName: Gold Fish
+    category: 1
+    paletteColor: {r: 1.0, g: 0.85, b: 0.0, a: 1}
+    prefab: {fileID: 4078038084914256954, guid: 78e6fa88e47406246a8202d011b22a88, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0.4, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
+  - id: Seal
+    displayName: Seal
+    category: 2
+    paletteColor: {r: 0.65, g: 0.45, b: 0.85, a: 1}
+    prefab: {fileID: 3226206715298369747, guid: f539914f00117344695570c00aa00fe6, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0.4, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 1
+    directionalKind: Seal
+  - id: MovingIceSmall
+    displayName: Moving Ice (S)
+    category: 3
+    paletteColor: {r: 0.5, g: 0.95, b: 0.95, a: 1}
+    prefab: {fileID: 1728995275818217166, guid: a0d6714c9b1266a44a0b80d361dffae8, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 1
+    directionalKind: MovingIce
+  - id: MovingIceLarge
+    displayName: Moving Ice (L)
+    category: 3
+    paletteColor: {r: 0.4, g: 0.85, b: 0.85, a: 1}
+    prefab: {fileID: 1728995275818217166, guid: 58ddd03b7cea95a489998c956c2c7935, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 1
+    directionalKind: MovingIce
+  - id: MovingIcePingPongSmall
+    displayName: Round Trip Ice (S)
+    category: 3
+    paletteColor: {r: 0.55, g: 0.85, b: 0.55, a: 1}
+    prefab: {fileID: 1728995275818217166, guid: a0d6714c9b1266a44a0b80d361dffae8, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 1
+    directionalKind: MovingIcePingPong
+  - id: MovingIcePingPongLarge
+    displayName: Round Trip Ice (L)
+    category: 3
+    paletteColor: {r: 0.45, g: 0.78, b: 0.45, a: 1}
+    prefab: {fileID: 1728995275818217166, guid: 58ddd03b7cea95a489998c956c2c7935, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 1
+    directionalKind: MovingIcePingPong
+  - id: BlizzardOctagon
+    displayName: Wind Octagon
+    category: 3
+    paletteColor: {r: 0.85, g: 0.95, b: 1.0, a: 1}
+    prefab: {fileID: 6924979534593674276, guid: bd855728da5842c4e9aaa3a4da513a9c, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0.05, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 1
+    directionalKind: Blizzard
+  - id: BlizzardHexagon
+    displayName: Wind Hexagon
+    category: 3
+    paletteColor: {r: 0.80, g: 0.92, b: 0.98, a: 1}
+    prefab: {fileID: 8688214403321899019, guid: 914e92b52cad6d04eb8f5f6a0e576212, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0.05, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 1
+    directionalKind: Blizzard

@@ -1,0 +1,18 @@
+{
+    "FishNormal": {
+        "baseScore": 100.0,
+        "displayColor" : { "r":255,"g":30,"b":30,"a":255 },
+        "shouldShowInResult" : true,
+        "resultLabel" : "Fish",
+        "gradeCategory" : "Fish",
+        "gradeCap" : 2147483647
+    },
+    "FishGold": {
+        "baseScore": 500.0,
+        "displayColor" : { "r":255,"g":30,"b":30,"a":255 },
+        "shouldShowInResult" : true,
+        "resultLabel" : "Gold Fish",
+        "gradeCategory" : "Fish",
+        "gradeCap" : 2147483647
+    }
+}

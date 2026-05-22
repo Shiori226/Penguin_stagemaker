@@ -1,0 +1,10 @@
+{
+    "ClearTimeBonus": {
+        "baseScore": 50.0,
+        "displayColor" : { "r":255,"g":30,"b":30,"a":255 },
+        "shouldShowInResult" : true,
+        "resultLabel" : "Clear Time Bonus",
+        "gradeCategory" : "ClearTimeBonus",
+        "gradeCap" : 2147483647
+    }
+}

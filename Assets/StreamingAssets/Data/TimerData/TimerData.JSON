@@ -1,0 +1,6 @@
+{
+    "TimerKeeper": {
+        "timeLimit": 60.0,
+        "warningThreshold" : 20
+    }
+}

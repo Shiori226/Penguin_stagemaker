@@ -1,0 +1,6 @@
+{
+    "Fish": {
+        "evaluationType" : "Positive",
+        "gradeWeight": 0.45
+    }
+}

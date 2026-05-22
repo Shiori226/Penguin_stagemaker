@@ -1,0 +1,6 @@
+{
+    "ClearTimeBonus": {
+        "evaluationType" : "Positive",
+        "gradeWeight": 0.35
+    }
+}
