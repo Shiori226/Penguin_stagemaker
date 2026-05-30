@@ -38,6 +38,10 @@ namespace StageMaker
         private string selectedPartId;   // クリックで配置するためのカレント選択
         public bool IsEraserMode => eraserMode;
 
+        private bool canUndo;
+        private readonly List<CustomStagePartPlacement> undoParts = new();
+        private string undoDisplayName = "";
+
         private Camera editorCamera;
         private GameObject sceneRoot;       // 3D シーンの親 (light, ground, parts)
         private Transform partsRoot;        // 配置パーツの親
@@ -59,6 +63,68 @@ namespace StageMaker
             currentData = data;
             if (nameField != null) { nameField.text = data.displayName; }
             RebuildScene();
+            ClearUndo();
+        }
+
+        private static CustomStagePartPlacement ClonePlacement(CustomStagePartPlacement source)
+        {
+            if (source == null) { return null; }
+            return new CustomStagePartPlacement
+            {
+                partId = source.partId,
+                worldPosition = source.worldPosition,
+                rotationY = source.rotationY,
+                directionTarget = source.directionTarget,
+            };
+        }
+
+        private void SaveUndoSnapshot()
+        {
+            if (currentData == null) { canUndo = false; return; }
+            undoParts.Clear();
+            foreach (var part in currentData.parts)
+            {
+                undoParts.Add(ClonePlacement(part));
+            }
+            undoDisplayName = currentData.displayName;
+            canUndo = true;
+        }
+
+        private void ClearUndo()
+        {
+            canUndo = false;
+            undoParts.Clear();
+            undoDisplayName = string.Empty;
+        }
+
+        private void RestoreUndo()
+        {
+            if (!canUndo || currentData == null) { return; }
+            currentData.parts.Clear();
+            foreach (var part in undoParts)
+            {
+                currentData.parts.Add(ClonePlacement(part));
+            }
+            currentData.displayName = undoDisplayName;
+            if (nameField != null)
+            {
+                nameField.text = undoDisplayName;
+            }
+            RebuildScene();
+            ClearUndo();
+        }
+
+        private bool IsUndoRequested()
+        {
+            if (!(Input.GetKeyDown(KeyCode.Z) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))))
+            {
+                return false;
+            }
+            if (EventSystem.current == null) { return true; }
+            var selected = EventSystem.current.currentSelectedGameObject;
+            if (selected == null) { return true; }
+            if (selected.GetComponentInParent<InputField>() != null) { return false; }
+            return true;
         }
 
         // ========== UI 構築 ==========
@@ -812,6 +878,7 @@ namespace StageMaker
                 return;
             }
 
+            SaveUndoSnapshot();
             var placement = ghostDraggable.placement;
             var def = ghostDraggable.definition;
 
@@ -850,6 +917,12 @@ namespace StageMaker
         {
             if (sceneRoot == null) { return; }
             if (editorCamera == null) { return; }
+
+            if (IsUndoRequested())
+            {
+                RestoreUndo();
+                return;
+            }
 
             if (Input.GetMouseButtonDown(0))
             {
@@ -890,6 +963,7 @@ namespace StageMaker
                 {
                     float dragDistance = Vector2.Distance(Input.mousePosition, currentDragStartMousePosition);
                     if (dragDistance < DragStartPixelThreshold) { return; }
+                    SaveUndoSnapshot();
                     currentDragMoved = true;
                 }
 
@@ -1001,6 +1075,7 @@ namespace StageMaker
         public void RequestDelete(DraggablePart part)
         {
             if (part == null || currentData == null) return;
+            SaveUndoSnapshot();
             if (part.placement != null) { currentData.parts.Remove(part.placement); }
 
             // 方向性パーツの場合は対のハンドルも消す
@@ -1017,6 +1092,7 @@ namespace StageMaker
         private void PlacePartAt(string partId, Vector3 worldPos)
         {
             if (currentData == null || catalog == null) return;
+            SaveUndoSnapshot();
             var def = catalog.Find(partId);
             if (def == null) return;
 
