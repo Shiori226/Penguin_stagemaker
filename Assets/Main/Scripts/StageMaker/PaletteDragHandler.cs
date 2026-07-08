@@ -15,6 +15,7 @@ namespace StageMaker
         private GameObject ghost;
         private DraggablePart ghostDraggable;
         private bool hovering;
+        private bool hasValidPlacement;   // ドラッグ中に一度でも置ける位置を通ったか
 
         public void Initialize(StageMakerEditorView e, string id, RectTransform hoverTargetOverride = null)
         {
@@ -66,11 +67,21 @@ namespace StageMaker
                     if (ghost != null)
                     {
                         ghostDraggable = ghost.GetComponent<DraggablePart>();
+                        hasValidPlacement = false;
                     }
                 }
                 if (ghost == null) { return; }
 
-                Vector3 newPos = hitPoint + (ghostDraggable != null && ghostDraggable.definition != null
+                // 氷 (Platform) は既存の氷と重ならない位置に解決してからゴーストへ反映する
+                Vector3 anchor = hitPoint;
+                if (ghostDraggable != null
+                    && !editor.TryResolvePlatformAnchor(ghostDraggable.definition, anchor, ghostDraggable.placement, out anchor))
+                {
+                    return; // 解決不能: このフレームは動かさず、最後の有効位置に留める
+                }
+                hasValidPlacement = true;
+
+                Vector3 newPos = anchor + (ghostDraggable != null && ghostDraggable.definition != null
                     ? ghostDraggable.definition.spawnOffset
                     : Vector3.zero);
                 Vector3 delta = newPos - ghost.transform.position;
@@ -78,7 +89,7 @@ namespace StageMaker
 
                 if (ghostDraggable != null && ghostDraggable.placement != null)
                 {
-                    ghostDraggable.placement.worldPosition = hitPoint;
+                    ghostDraggable.placement.worldPosition = anchor;
                     // 方向ハンドル付きの場合は同じ delta だけ動かしてリンクを更新
                     if (ghostDraggable.partner != null)
                     {
@@ -109,11 +120,12 @@ namespace StageMaker
         public void OnEndDrag(PointerEventData eventData)
         {
             if (ghost == null) return;
-            // ドラッグ終了時にゴーストが地面より上にある場合のみ確定
+            // ドラッグ終了時にゴーストが地面より上にあり、かつ一度でも置ける位置を通った場合のみ確定
             bool overScene = editor.TryRaycastGround(eventData.position, out _);
-            editor.FinalizeGhost(ghost, ghostDraggable, accepted: overScene);
+            editor.FinalizeGhost(ghost, ghostDraggable, accepted: overScene && hasValidPlacement);
             ghost = null;
             ghostDraggable = null;
+            hasValidPlacement = false;
         }
     }
 }

@@ -42,6 +42,9 @@ namespace StageMaker
         private readonly List<CustomStagePartPlacement> undoParts = new();
         private string undoDisplayName = "";
 
+        // 氷 (Platform) の重なり判定用に使い回す障害物バッファ
+        private readonly List<IcePlacementSolver.CircleObstacle> obstacleBuffer = new();
+
         private Camera editorCamera;
         private GameObject sceneRoot;       // 3D シーンの親 (light, ground, parts)
         private Transform partsRoot;        // 配置パーツの親
@@ -835,6 +838,35 @@ namespace StageMaker
             return uiRaycastResults.Count > 0;
         }
 
+        // ========== 氷 (Platform) の重なり防止 + 吸着 ==========
+
+        /// <summary>
+        /// Platform (氷) のアンカー位置 (placement.worldPosition 空間) を
+        /// 「既存の氷と重ならず、近ければ接する」位置に解決する。
+        /// Platform 以外は常に素通しで true。false は置ける位置が無い場合のみ。
+        /// exclude にはドラッグ中の自分自身 / ゴーストの placement を渡す。
+        /// </summary>
+        public bool TryResolvePlatformAnchor(
+            StagePartDefinition def, Vector3 desiredAnchor,
+            CustomStagePartPlacement exclude, out Vector3 resolvedAnchor)
+        {
+            resolvedAnchor = desiredAnchor;
+            if (def == null || def.category != StagePartCategory.Platform) { return true; }
+            if (partsRoot == null) { return true; }
+
+            IcePlacementSolver.CollectPlatformObstacles(partsRoot, exclude, obstacleBuffer);
+            bool ok = IcePlacementSolver.TryResolve(
+                new Vector2(desiredAnchor.x, desiredAnchor.z),
+                IcePlacementSolver.GetPartRadius(def),
+                obstacleBuffer,
+                out Vector2 resolved);
+            if (ok)
+            {
+                resolvedAnchor = new Vector3(resolved.x, desiredAnchor.y, resolved.y);
+            }
+            return ok;
+        }
+
         // ========== パレットドラッグ ==========
 
         public GameObject SpawnGhostFromPalette(string partId, PointerEventData eventData)
@@ -878,9 +910,23 @@ namespace StageMaker
                 return;
             }
 
-            SaveUndoSnapshot();
             var placement = ghostDraggable.placement;
             var def = ghostDraggable.definition;
+
+            // 氷 (Platform) は確定直前にも重なりを再検証する
+            if (!TryResolvePlatformAnchor(def, placement.worldPosition, placement, out Vector3 fixedAnchor))
+            {
+                if (ghostDraggable.partner != null)
+                {
+                    Destroy(ghostDraggable.partner.gameObject);
+                }
+                Destroy(ghost);
+                return;
+            }
+            placement.worldPosition = fixedAnchor;
+            ghost.transform.position = fixedAnchor + (def != null ? def.spawnOffset : Vector3.zero);
+
+            SaveUndoSnapshot();
 
             // unique なら既存を消してから入れ替え
             if (def != null && def.unique)
@@ -992,6 +1038,17 @@ namespace StageMaker
                     }
                     else
                     {
+                        // 氷 (Platform) は他の氷と重ならない位置に解決してから動かす
+                        if (currentDrag.definition != null)
+                        {
+                            Vector3 anchor = newPos - currentDrag.definition.spawnOffset;
+                            if (!TryResolvePlatformAnchor(currentDrag.definition, anchor, currentDrag.placement, out anchor))
+                            {
+                                return; // 解決不能: このフレームは動かさない (現在位置は合法)
+                            }
+                            newPos = anchor + currentDrag.definition.spawnOffset;
+                        }
+
                         // 本体: worldPosition を更新し、ハンドル (とリンク) も同じ delta だけ動かす
                         Vector3 oldPos = currentDrag.transform.position;
                         Vector3 delta = newPos - oldPos;
@@ -1092,9 +1149,17 @@ namespace StageMaker
         private void PlacePartAt(string partId, Vector3 worldPos)
         {
             if (currentData == null || catalog == null) return;
-            SaveUndoSnapshot();
             var def = catalog.Find(partId);
             if (def == null) return;
+
+            // 氷 (Platform) は既存の氷と重ならない位置に解決してから置く。
+            // 置ける位置が無い場合は Undo スナップショットを消費せずに何もしない。
+            if (!TryResolvePlatformAnchor(def, worldPos, null, out worldPos))
+            {
+                return;
+            }
+
+            SaveUndoSnapshot();
 
             var placement = new CustomStagePartPlacement
             {
