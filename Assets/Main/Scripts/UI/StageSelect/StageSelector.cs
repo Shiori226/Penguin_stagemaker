@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using StageMaker;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,6 +7,16 @@ using UnityEngine.UI;
 [RequireComponent(typeof(ToggleGroup))]
 public class StageSelector : MonoBehaviour
 {
+    /// <summary>
+    /// タイトルのステージ選択に表示しない(選択不可にする)ステージ。
+    /// </summary>
+    private static readonly HashSet<StageType> HiddenStages = new HashSet<StageType>
+    {
+        StageType.FirstStage,
+        StageType.SecondStage,
+        StageType.ThirdStage,
+    };
+
     private ToggleGroup toggleGroup;
 
     [SerializeField]
@@ -18,10 +29,17 @@ public class StageSelector : MonoBehaviour
     {
         toggleGroup = GetComponent<ToggleGroup>();
 
+        // 非表示ステージが選択されたままだと Start ボタンで起動できてしまうため
+        // Practice に戻しておく
+        if (HiddenStages.Contains(StageGenerator.GetStageType()))
+        {
+            StageGenerator.SetStageType(StageType.Practice);
+        }
+
         // 1) 既存のデフォルトステージ用トグルを生成 (Custom は別途下で扱う)
         foreach (StageType stage in Enum.GetValues(typeof(StageType)))
         {
-            if (stage == StageType.Custom) { continue; }
+            if (stage == StageType.Custom || HiddenStages.Contains(stage)) { continue; }
             var toggleObject = Instantiate(stageTogglePrefab, transform);
             var toggleController = toggleObject.GetComponent<StageToggleController>();
             toggleController.Initialize(stage, toggleGroup);
