@@ -5,16 +5,13 @@ using UnityEngine.UI;
 namespace StageMaker
 {
     /// <summary>
-    /// ステージ一覧ビュー (デフォルト4ステージ + 自作ステージ)。
+    /// ステージ一覧ビュー (Practice + 自作ステージ)。
     /// </summary>
     public class StageMakerListView : MonoBehaviour
     {
         private static readonly (StageType type, string label)[] DefaultStages =
         {
             (StageType.Practice,    "Practice Stage"),
-            (StageType.FirstStage,  "1st Stage"),
-            (StageType.SecondStage, "2nd Stage"),
-            (StageType.ThirdStage,  "3rd Stage"),
         };
 
         private StageMakerSceneController controller;
