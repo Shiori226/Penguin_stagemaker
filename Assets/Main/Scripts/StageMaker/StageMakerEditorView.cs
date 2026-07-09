@@ -43,7 +43,7 @@ namespace StageMaker
         private string undoDisplayName = "";
 
         // 氷 (Platform) の重なり判定用に使い回す障害物バッファ
-        private readonly List<IcePlacementSolver.CircleObstacle> obstacleBuffer = new();
+        private readonly List<IcePlacementSolver.PlacedIce> obstacleBuffer = new();
 
         private Camera editorCamera;
         private GameObject sceneRoot;       // 3D シーンの親 (light, ground, parts)
@@ -856,8 +856,8 @@ namespace StageMaker
 
             IcePlacementSolver.CollectPlatformObstacles(partsRoot, exclude, obstacleBuffer);
             bool ok = IcePlacementSolver.TryResolve(
+                def,
                 new Vector2(desiredAnchor.x, desiredAnchor.z),
-                IcePlacementSolver.GetPartRadius(def),
                 obstacleBuffer,
                 out Vector2 resolved);
             if (ok)
