@@ -194,6 +194,66 @@ namespace StageMaker
             return (go, btn, labelText);
         }
 
+        public static (GameObject go, Slider slider) CreateSlider(GameObject parent, string name, Vector2 size)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(parent.transform, false);
+            rt.sizeDelta = size;
+            rt.localScale = Vector3.one;
+
+            // 背景 (レール)
+            var bgGo = new GameObject("Background", typeof(RectTransform));
+            var bgRt = bgGo.GetComponent<RectTransform>();
+            bgRt.SetParent(go.transform, false);
+            bgRt.anchorMin = new Vector2(0, 0.5f);
+            bgRt.anchorMax = new Vector2(1, 0.5f);
+            bgRt.sizeDelta = new Vector2(0, 8);
+            var bgImg = bgGo.AddComponent<Image>();
+            bgImg.color = new Color(1f, 1f, 1f, 0.35f);
+            bgImg.raycastTarget = false;
+
+            // 塗り (現在値まで)
+            var fillAreaGo = new GameObject("Fill Area", typeof(RectTransform));
+            var fillAreaRt = fillAreaGo.GetComponent<RectTransform>();
+            fillAreaRt.SetParent(go.transform, false);
+            fillAreaRt.anchorMin = new Vector2(0, 0.5f);
+            fillAreaRt.anchorMax = new Vector2(1, 0.5f);
+            fillAreaRt.sizeDelta = new Vector2(-12, 8);
+            var fillGo = new GameObject("Fill", typeof(RectTransform));
+            var fillRt = fillGo.GetComponent<RectTransform>();
+            fillRt.SetParent(fillAreaGo.transform, false);
+            fillRt.sizeDelta = new Vector2(6, 0);
+            var fillImg = fillGo.AddComponent<Image>();
+            fillImg.color = IceText;
+            fillImg.raycastTarget = false;
+
+            // ハンドル
+            var handleAreaGo = new GameObject("Handle Slide Area", typeof(RectTransform));
+            var handleAreaRt = handleAreaGo.GetComponent<RectTransform>();
+            handleAreaRt.SetParent(go.transform, false);
+            handleAreaRt.anchorMin = Vector2.zero;
+            handleAreaRt.anchorMax = Vector2.one;
+            handleAreaRt.offsetMin = new Vector2(10, 0);
+            handleAreaRt.offsetMax = new Vector2(-10, 0);
+            var handleGo = new GameObject("Handle", typeof(RectTransform));
+            var handleRt = handleGo.GetComponent<RectTransform>();
+            handleRt.SetParent(handleAreaGo.transform, false);
+            handleRt.sizeDelta = new Vector2(20, 0);
+            var handleImg = handleGo.AddComponent<Image>();
+            StyleButtonImage(handleImg, Color.white);
+
+            var slider = go.AddComponent<Slider>();
+            slider.fillRect = fillRt;
+            slider.handleRect = handleRt;
+            slider.targetGraphic = handleImg;
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.value = 1f;
+
+            return (go, slider);
+        }
+
         public static Text CreateText(GameObject parent, string name, string text, int fontSize, Color color, TextAnchor align, Vector2 anchorMin, Vector2 anchorMax)
         {
             var go = new GameObject(name, typeof(RectTransform));

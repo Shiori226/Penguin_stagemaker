@@ -10,6 +10,7 @@ public class TitleManager : MonoBehaviour
         AudioManager.Instance.bgm.Change(BgmType.Title);
         InjectStageMakerButton();
         InjectQuitButton();
+        InjectVolumeSliders();
     }
 
     /// <summary>
@@ -110,6 +111,86 @@ public class TitleManager : MonoBehaviour
         label.resizeTextMaxSize = 20;
 
         btn.onClick.AddListener(OnQuitButtonClicked);
+    }
+
+    /// <summary>
+    /// Title シーンに BGM / SE の音量スライダーを動的に挿入する。
+    /// 値は AudioManager が PlayerPrefs へ保存し、全シーンで反映される。
+    /// </summary>
+    private void InjectVolumeSliders()
+    {
+        var canvas = FindObjectOfType<Canvas>();
+        if (canvas == null) { return; }
+
+        // 既に挿入済みなら何もしない
+        if (canvas.transform.Find("VolumePanel") != null) { return; }
+
+        var panelGo = new GameObject("VolumePanel", typeof(RectTransform));
+        var panelRt = panelGo.GetComponent<RectTransform>();
+        panelRt.SetParent(canvas.transform, false);
+        // 画面右下に配置
+        panelRt.anchorMin = new Vector2(1, 0);
+        panelRt.anchorMax = new Vector2(1, 0);
+        panelRt.pivot = new Vector2(1, 0);
+        panelRt.anchoredPosition = new Vector2(-30, 58);
+        panelRt.sizeDelta = new Vector2(300, 100);
+        var panelImg = panelGo.AddComponent<Image>();
+        StageMakerUIFactory.StylePanelImage(panelImg, new Color(1f, 1f, 1f, 0.6f));
+
+        CreateVolumeRow(panelGo, "BgmRow", "BGM", -8,
+            AudioManager.Instance.BgmVolume,
+            v => AudioManager.Instance.SetBgmVolume(v));
+
+        CreateVolumeRow(panelGo, "SeRow", "SE", -54,
+            AudioManager.Instance.SeVolume,
+            v =>
+            {
+                AudioManager.Instance.SetSeVolume(v);
+                PlaySeFeedbackThrottled();
+            });
+    }
+
+    private void CreateVolumeRow(GameObject parent, string name, string label, float y,
+        float initialValue, UnityEngine.Events.UnityAction<float> onChanged)
+    {
+        var rowGo = new GameObject(name, typeof(RectTransform));
+        var rowRt = rowGo.GetComponent<RectTransform>();
+        rowRt.SetParent(parent.transform, false);
+        rowRt.anchorMin = new Vector2(0, 1);
+        rowRt.anchorMax = new Vector2(1, 1);
+        rowRt.pivot = new Vector2(0.5f, 1);
+        rowRt.anchoredPosition = new Vector2(0, y);
+        rowRt.sizeDelta = new Vector2(-24, 38);
+
+        var labelText = StageMakerUIFactory.CreateText(rowGo, "Label", label,
+            20, StageMakerUIFactory.IceText, TextAnchor.MiddleLeft,
+            new Vector2(0, 0), new Vector2(0, 1));
+        labelText.fontStyle = FontStyle.Bold;
+        var labelRt = (RectTransform)labelText.transform;
+        labelRt.sizeDelta = new Vector2(56, 0);
+        labelRt.pivot = new Vector2(0, 0.5f);
+        labelRt.anchoredPosition = new Vector2(0, 0);
+
+        var (sliderGo, slider) = StageMakerUIFactory.CreateSlider(rowGo, "Slider", new Vector2(0, 24));
+        var sliderRt = sliderGo.GetComponent<RectTransform>();
+        sliderRt.anchorMin = new Vector2(0, 0.5f);
+        sliderRt.anchorMax = new Vector2(1, 0.5f);
+        sliderRt.pivot = new Vector2(0.5f, 0.5f);
+        sliderRt.offsetMin = new Vector2(60, -12);
+        sliderRt.offsetMax = new Vector2(0, 12);
+
+        slider.value = initialValue;
+        slider.onValueChanged.AddListener(onChanged);
+    }
+
+    // SE スライダー操作時の試聴フィードバック (連続発火しないよう間引く)
+    private float lastSeFeedbackTime = -1f;
+
+    private void PlaySeFeedbackThrottled()
+    {
+        if (Time.unscaledTime - lastSeFeedbackTime < 0.15f) { return; }
+        lastSeFeedbackTime = Time.unscaledTime;
+        AudioManager.Instance?.se.Play(SeTypeSystem.SlideMove);
     }
 
     private void OnQuitButtonClicked()

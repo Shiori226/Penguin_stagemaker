@@ -11,14 +11,30 @@ public enum BgmType
 public class BgmPlayer : MonoBehaviour
 {
     private AudioSource audioSource;
+    private float baseVolume = 1f;   // プレハブに設定された基準音量
 
     void Awake()
     {
+        EnsureInitialized();
+    }
+
+    // AudioManager.Awake が先に走っても動くよう遅延初期化にしている
+    private void EnsureInitialized()
+    {
+        if (audioSource != null) { return; }
         audioSource = gameObject.GetComponent<AudioSource>();
-        
-        audioSource.loop = true; 
+        baseVolume = audioSource.volume;
+
+        audioSource.loop = true;
         audioSource.playOnAwake = false;
-        audioSource.spatialBlend = 0f; // 2D�T�E���h
+        audioSource.spatialBlend = 0f; // 2Dサウンド
+    }
+
+    /// <summary>基準音量に対する倍率 (0~1) で音量を設定する。</summary>
+    public void SetVolumeScale(float scale)
+    {
+        EnsureInitialized();
+        audioSource.volume = baseVolume * Mathf.Clamp01(scale);
     }
 
     public void Change(BgmType bgmType) 

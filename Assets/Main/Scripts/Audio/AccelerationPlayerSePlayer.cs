@@ -5,15 +5,31 @@ public class AccelerationPlayerSePlayer : MonoBehaviour
 {
     private AudioSource audioSource;
     private AudioClip accelerateClip;
+    private float baseVolume = 1f;   // ãƒ—ãƒ¬ãƒãƒ–ã«è¨­å®šã•ã‚ŒãŸåŸºæº–éŸ³é‡
 
     private void Awake()
     {
+        EnsureInitialized();
+        accelerateClip = Resources.Load<AudioClip>("Audio/SE/Player/AccelerateSE");
+    }
+
+    // AudioManager.Awake ãŒå…ˆã«èµ°ã£ã¦ã‚‚å‹•ãã‚ˆã†é…å»¶åˆæœŸåŒ–ã«ã—ã¦ã„ã‚‹
+    private void EnsureInitialized()
+    {
+        if (audioSource != null) { return; }
         audioSource = gameObject.GetComponent<AudioSource>();
+        baseVolume = audioSource.volume;
+
         audioSource.loop = false;
         audioSource.playOnAwake = false;
-        audioSource.spatialBlend = 0f; // 2DƒTƒEƒ“ƒh
+        audioSource.spatialBlend = 0f; // 2Dã‚µã‚¦ãƒ³ãƒ‰
+    }
 
-        accelerateClip = Resources.Load<AudioClip>("Audio/SE/Player/AccelerateSE");
+    /// <summary>åŸºæº–éŸ³é‡ã«å¯¾ã™ã‚‹å€ç‡ (0~1) ã§éŸ³é‡ã‚’è¨­å®šã™ã‚‹ã€‚</summary>
+    public void SetVolumeScale(float scale)
+    {
+        EnsureInitialized();
+        audioSource.volume = baseVolume * Mathf.Clamp01(scale);
     }
 
     public void Play()
@@ -30,8 +46,8 @@ public class AccelerationPlayerSePlayer : MonoBehaviour
 
     public void Stop()
     {
-        // Œ»İ‚Í“Á’è‚ÌSE‚ğ’â~‚·‚é‹@”\‚ÍÀ‘•‚µ‚Ä‚¢‚Ü‚¹‚ñB
-        // •K—v‚É‰‚¶‚ÄŠg’£‚µ‚Ä‚­‚¾‚³‚¢B
+        // ï¿½ï¿½ï¿½İ‚Í“ï¿½ï¿½ï¿½ï¿½SEï¿½ï¿½ï¿½~ï¿½ï¿½ï¿½ï¿½@ï¿½\ï¿½Íï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½Ü‚ï¿½ï¿½ï¿½B
+        // ï¿½Kï¿½vï¿½É‰ï¿½ï¿½ï¿½ï¿½ÄŠgï¿½ï¿½ï¿½ï¿½ï¿½Ä‚ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½B
         audioSource.Stop();
     }
 }
