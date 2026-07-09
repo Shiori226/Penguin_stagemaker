@@ -40,9 +40,16 @@ namespace StageMaker
         private string selectedPartId;   // クリックで配置するためのカレント選択
         public bool IsEraserMode => eraserMode;
 
-        private bool canUndo;
-        private readonly List<CustomStagePartPlacement> undoParts = new();
-        private string undoDisplayName = "";
+        // 多段 Undo/Redo。各スナップショットは操作前の全パーツ+ステージ名のクローン
+        private class EditorSnapshot
+        {
+            public List<CustomStagePartPlacement> parts;
+            public string displayName;
+        }
+
+        private const int MaxUndoSteps = 50;
+        private readonly List<EditorSnapshot> undoStack = new();
+        private readonly List<EditorSnapshot> redoStack = new();
 
         // 氷 (Platform) の重なり判定用に使い回す障害物バッファ
         private readonly List<IcePlacementSolver.PlacedIce> obstacleBuffer = new();
@@ -86,45 +93,83 @@ namespace StageMaker
             };
         }
 
-        private void SaveUndoSnapshot()
+        private EditorSnapshot CaptureSnapshot()
         {
-            if (currentData == null) { canUndo = false; return; }
-            undoParts.Clear();
+            var snapshot = new EditorSnapshot
+            {
+                parts = new List<CustomStagePartPlacement>(currentData.parts.Count),
+                displayName = currentData.displayName,
+            };
             foreach (var part in currentData.parts)
             {
-                undoParts.Add(ClonePlacement(part));
+                snapshot.parts.Add(ClonePlacement(part));
             }
-            undoDisplayName = currentData.displayName;
-            canUndo = true;
+            return snapshot;
+        }
+
+        private void ApplySnapshot(EditorSnapshot snapshot)
+        {
+            currentData.parts.Clear();
+            foreach (var part in snapshot.parts)
+            {
+                currentData.parts.Add(ClonePlacement(part));
+            }
+            currentData.displayName = snapshot.displayName;
+            if (nameField != null)
+            {
+                nameField.text = snapshot.displayName;
+            }
+            RebuildScene();
+        }
+
+        /// <summary>変異操作の直前に呼ぶ。現在の状態を Undo スタックへ積み、Redo 履歴を破棄する。</summary>
+        private void SaveUndoSnapshot()
+        {
+            if (currentData == null) { return; }
+            undoStack.Add(CaptureSnapshot());
+            if (undoStack.Count > MaxUndoSteps)
+            {
+                undoStack.RemoveAt(0);
+            }
+            redoStack.Clear();
         }
 
         private void ClearUndo()
         {
-            canUndo = false;
-            undoParts.Clear();
-            undoDisplayName = string.Empty;
+            undoStack.Clear();
+            redoStack.Clear();
         }
 
-        private void RestoreUndo()
+        private void Undo()
         {
-            if (!canUndo || currentData == null) { return; }
-            currentData.parts.Clear();
-            foreach (var part in undoParts)
-            {
-                currentData.parts.Add(ClonePlacement(part));
-            }
-            currentData.displayName = undoDisplayName;
-            if (nameField != null)
-            {
-                nameField.text = undoDisplayName;
-            }
-            RebuildScene();
-            ClearUndo();
+            if (undoStack.Count == 0 || currentData == null) { return; }
+            redoStack.Add(CaptureSnapshot());
+            var snapshot = undoStack[undoStack.Count - 1];
+            undoStack.RemoveAt(undoStack.Count - 1);
+            ApplySnapshot(snapshot);
+        }
+
+        private void Redo()
+        {
+            if (redoStack.Count == 0 || currentData == null) { return; }
+            undoStack.Add(CaptureSnapshot());
+            var snapshot = redoStack[redoStack.Count - 1];
+            redoStack.RemoveAt(redoStack.Count - 1);
+            ApplySnapshot(snapshot);
         }
 
         private bool IsUndoRequested()
         {
             if (!(Input.GetKeyDown(KeyCode.Z) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))))
+            {
+                return false;
+            }
+            return !IsTextInputFocused();
+        }
+
+        private bool IsRedoRequested()
+        {
+            if (!(Input.GetKeyDown(KeyCode.Y) && (Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl))))
             {
                 return false;
             }
@@ -1032,7 +1077,13 @@ namespace StageMaker
 
             if (IsUndoRequested())
             {
-                RestoreUndo();
+                Undo();
+                return;
+            }
+
+            if (IsRedoRequested())
+            {
+                Redo();
                 return;
             }
 
