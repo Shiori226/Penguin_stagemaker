@@ -12,6 +12,8 @@ namespace StageMaker
     public class StageMakerEditorView : MonoBehaviour
     {
         public const string EraserId = "__eraser__";
+        // R キー 1 回あたりの氷の回転量 (度)。Shift+R で逆回転
+        public const float RotateStepDegrees = 15f;
         private const float PaletteWidth = 640f;
         private const float StageCameraXOffset = -22f;
 
@@ -126,11 +128,16 @@ namespace StageMaker
             {
                 return false;
             }
-            if (EventSystem.current == null) { return true; }
+            return !IsTextInputFocused();
+        }
+
+        /// <summary>ステージ名などのテキスト入力欄にフォーカスがあるか (ショートカット誤爆防止)。</summary>
+        public static bool IsTextInputFocused()
+        {
+            if (EventSystem.current == null) { return false; }
             var selected = EventSystem.current.currentSelectedGameObject;
-            if (selected == null) { return true; }
-            if (selected.GetComponentInParent<InputField>() != null) { return false; }
-            return true;
+            if (selected == null) { return false; }
+            return selected.GetComponentInParent<InputField>() != null;
         }
 
         // ========== UI 構築 ==========
@@ -854,11 +861,12 @@ namespace StageMaker
         /// <summary>
         /// Platform (氷) のアンカー位置 (placement.worldPosition 空間) を
         /// 「既存の氷と重ならず、近ければ接する」位置に解決する。
+        /// movingRotationY は移動パーツの Y 軸回転 (度)。
         /// Platform 以外は常に素通しで true。false は置ける位置が無い場合のみ。
         /// exclude にはドラッグ中の自分自身 / ゴーストの placement を渡す。
         /// </summary>
         public bool TryResolvePlatformAnchor(
-            StagePartDefinition def, Vector3 desiredAnchor,
+            StagePartDefinition def, Vector3 desiredAnchor, float movingRotationY,
             CustomStagePartPlacement exclude, out Vector3 resolvedAnchor)
         {
             resolvedAnchor = desiredAnchor;
@@ -873,6 +881,7 @@ namespace StageMaker
             }
             bool ok = IcePlacementSolver.TryResolve(
                 def,
+                movingRotationY,
                 new Vector2(desiredAnchor.x, desiredAnchor.z),
                 obstacleBuffer,
                 out Vector2 resolved);
@@ -881,6 +890,47 @@ namespace StageMaker
                 resolvedAnchor = new Vector3(resolved.x, desiredAnchor.y, resolved.y);
             }
             return ok;
+        }
+
+        /// <summary>
+        /// 氷 (Platform) パーツを deltaDeg だけ回転する。回転後の形状で
+        /// 重なりを解決できない場合は回転しない。
+        /// recordUndo はシーンに確定済みのパーツのみ true (ゴーストは false)。
+        /// </summary>
+        public void TryRotatePart(DraggablePart part, float deltaDeg, bool recordUndo)
+        {
+            if (part == null || part.isHandle || part.placement == null || part.definition == null) { return; }
+            if (part.definition.category != StagePartCategory.Platform) { return; }
+
+            float newRot = Mathf.Repeat(part.placement.rotationY + deltaDeg, 360f);
+            if (!TryResolvePlatformAnchor(part.definition, part.placement.worldPosition, newRot,
+                part.placement, out Vector3 resolvedAnchor))
+            {
+                return; // 回転すると置き場所がない: 回転を取りやめる
+            }
+
+            if (recordUndo)
+            {
+                if (part == currentDrag)
+                {
+                    // ドラッグ操作の一部として 1 回だけスナップショットを取る
+                    if (!currentDragMoved)
+                    {
+                        SaveUndoSnapshot();
+                        currentDragMoved = true;
+                    }
+                }
+                else
+                {
+                    SaveUndoSnapshot();
+                }
+            }
+
+            part.placement.rotationY = newRot;
+            part.placement.worldPosition = resolvedAnchor;
+            part.transform.SetPositionAndRotation(
+                resolvedAnchor + part.definition.spawnOffset,
+                Quaternion.Euler(0f, newRot, 0f));
         }
 
         // ========== パレットドラッグ ==========
@@ -930,7 +980,7 @@ namespace StageMaker
             var def = ghostDraggable.definition;
 
             // 氷 (Platform) は確定直前にも重なりを再検証する
-            if (!TryResolvePlatformAnchor(def, placement.worldPosition, placement, out Vector3 fixedAnchor))
+            if (!TryResolvePlatformAnchor(def, placement.worldPosition, placement.rotationY, placement, out Vector3 fixedAnchor))
             {
                 if (ghostDraggable.partner != null)
                 {
@@ -984,6 +1034,23 @@ namespace StageMaker
             {
                 RestoreUndo();
                 return;
+            }
+
+            // R キーで氷を回転 (Shift+R で逆回転)。
+            // ドラッグ中はその氷、そうでなければカーソル下の氷が対象
+            if (Input.GetKeyDown(KeyCode.R) && !IsTextInputFocused())
+            {
+                float step = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                    ? -RotateStepDegrees : RotateStepDegrees;
+                var rotateTarget = currentDrag;
+                if (rotateTarget == null && !IsScreenPointBlockedByUi(Input.mousePosition))
+                {
+                    rotateTarget = FindPartUnderCursor(Input.mousePosition);
+                }
+                if (rotateTarget != null)
+                {
+                    TryRotatePart(rotateTarget, step, recordUndo: true);
+                }
             }
 
             if (Input.GetMouseButtonDown(0))
@@ -1058,7 +1125,8 @@ namespace StageMaker
                         if (currentDrag.definition != null)
                         {
                             Vector3 anchor = newPos - currentDrag.definition.spawnOffset;
-                            if (!TryResolvePlatformAnchor(currentDrag.definition, anchor, currentDrag.placement, out anchor))
+                            if (!TryResolvePlatformAnchor(currentDrag.definition, anchor,
+                                currentDrag.placement.rotationY, currentDrag.placement, out anchor))
                             {
                                 return; // 解決不能: このフレームは動かさない (現在位置は合法)
                             }
@@ -1170,7 +1238,7 @@ namespace StageMaker
 
             // 氷 (Platform) は既存の氷と重ならない位置に解決してから置く。
             // 置ける位置が無い場合は Undo スナップショットを消費せずに何もしない。
-            if (!TryResolvePlatformAnchor(def, worldPos, null, out worldPos))
+            if (!TryResolvePlatformAnchor(def, worldPos, 0f, null, out worldPos))
             {
                 return;
             }

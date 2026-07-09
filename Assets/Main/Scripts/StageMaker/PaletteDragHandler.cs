@@ -26,6 +26,15 @@ namespace StageMaker
 
         private void Update()
         {
+            // パレットからのドラッグ中は R キーでゴーストを回転 (Shift+R で逆回転)
+            if (ghost != null && ghostDraggable != null
+                && Input.GetKeyDown(KeyCode.R) && !StageMakerEditorView.IsTextInputFocused())
+            {
+                float step = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+                    ? -StageMakerEditorView.RotateStepDegrees : StageMakerEditorView.RotateStepDegrees;
+                editor.TryRotatePart(ghostDraggable, step, recordUndo: false);
+            }
+
             if (hoverTarget == null || partId == StageMakerEditorView.EraserId) { return; }
             float targetScale = hovering ? 1.12f : 1f;
             hoverTarget.localScale = Vector3.Lerp(hoverTarget.localScale, Vector3.one * targetScale, Time.unscaledDeltaTime * 12f);
@@ -75,7 +84,9 @@ namespace StageMaker
                 // 氷 (Platform) は既存の氷と重ならない位置に解決してからゴーストへ反映する
                 Vector3 anchor = hitPoint;
                 if (ghostDraggable != null
-                    && !editor.TryResolvePlatformAnchor(ghostDraggable.definition, anchor, ghostDraggable.placement, out anchor))
+                    && !editor.TryResolvePlatformAnchor(ghostDraggable.definition, anchor,
+                        ghostDraggable.placement != null ? ghostDraggable.placement.rotationY : 0f,
+                        ghostDraggable.placement, out anchor))
                 {
                     return; // 解決不能: このフレームは動かさず、最後の有効位置に留める
                 }

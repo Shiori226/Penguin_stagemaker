@@ -14,12 +14,15 @@ namespace StageMaker
         public struct PlacedIce
         {
             public Vector2 center;   // placement.worldPosition の XZ
+            public float rotationY;  // placement.rotationY
             public StagePartDefinition def;
         }
 
-        // partId → XZ 凸包 (アンカー原点基準)
+        // partId → XZ 凸包 (アンカー原点基準、回転なし)
         private static readonly Dictionary<string, Vector2[]> hullCache = new();
-        // "movingId|obstacleId" → ミンコフスキー領域
+        // "partId@回転キー" → 回転済み凸包
+        private static readonly Dictionary<string, Vector2[]> rotatedHullCache = new();
+        // "movingId@回転|obstacleId@回転" → ミンコフスキー領域
         private static readonly Dictionary<string, Vector2[]> minkowskiCache = new();
         private static readonly List<Vector2> pointScratch = new();
         private static readonly List<(Vector2[] poly, Vector2 offset)> regionScratch = new();
@@ -45,6 +48,7 @@ namespace StageMaker
                 buffer.Add(new PlacedIce
                 {
                     center = new Vector2(part.placement.worldPosition.x, part.placement.worldPosition.z),
+                    rotationY = part.placement.rotationY,
                     def = part.definition,
                 });
             }
@@ -52,27 +56,65 @@ namespace StageMaker
 
         /// <summary>
         /// 望みの位置 desired を「どの氷とも重ならず、近ければ辺が接する」位置に解決する。
+        /// movingRotationY は移動パーツの Y 軸回転 (度)。
         /// 戻り値 false は「desired 自体が重なっていて、置ける位置も見つからない」場合のみ。
         /// </summary>
         public static bool TryResolve(
-            StagePartDefinition movingDef, Vector2 desired,
+            StagePartDefinition movingDef, float movingRotationY, Vector2 desired,
             IReadOnlyList<PlacedIce> obstacles, out Vector2 resolved)
         {
             resolved = desired;
             if (obstacles == null || obstacles.Count == 0) { return true; }
 
-            Vector2[] movingHull = GetHull(movingDef);
+            int movingRotKey = RotationKey(movingRotationY);
+            Vector2[] movingHull = GetRotatedHull(movingDef, movingRotKey);
             if (movingHull == null) { return true; }   // 形状を取得できない場合は判定しない
 
             regionScratch.Clear();
             for (int i = 0; i < obstacles.Count; i++)
             {
-                var region = GetMinkowskiRegion(movingDef, obstacles[i].def);
+                var region = GetMinkowskiRegion(
+                    movingDef, movingRotKey,
+                    obstacles[i].def, RotationKey(obstacles[i].rotationY));
                 if (region == null) { continue; }
                 regionScratch.Add((region, obstacles[i].center));
             }
             return IceGeometry.ResolvePlacement(
                 desired, IceGeometry.Circumradius(movingHull), regionScratch, out resolved);
+        }
+
+        /// <summary>回転角を 0.1° 単位に量子化したキャッシュキー。</summary>
+        private static int RotationKey(float rotationY)
+        {
+            return Mathf.RoundToInt(Mathf.Repeat(rotationY, 360f) * 10f) % 3600;
+        }
+
+        /// <summary>回転済み凸包 ("partId@回転キー" でキャッシュ)。</summary>
+        private static Vector2[] GetRotatedHull(StagePartDefinition def, int rotKey)
+        {
+            if (rotKey == 0) { return GetHull(def); }
+            if (def == null || string.IsNullOrEmpty(def.id)) { return null; }
+
+            string key = def.id + "@" + rotKey;
+            if (rotatedHullCache.TryGetValue(key, out var cached)) { return cached; }
+
+            var baseHull = GetHull(def);
+            Vector2[] rotated = null;
+            if (baseHull != null)
+            {
+                // Unity の Y 軸回転 (+Z が +X へ倒れる向き) を XZ 平面 (x, z)→(x, y) に適用
+                float rad = rotKey * 0.1f * Mathf.Deg2Rad;
+                float cos = Mathf.Cos(rad);
+                float sin = Mathf.Sin(rad);
+                rotated = new Vector2[baseHull.Length];
+                for (int i = 0; i < baseHull.Length; i++)
+                {
+                    Vector2 v = baseHull[i];
+                    rotated[i] = new Vector2(v.x * cos + v.y * sin, -v.x * sin + v.y * cos);
+                }
+            }
+            rotatedHullCache[key] = rotated;
+            return rotated;
         }
 
         /// <summary>プレハブのメッシュ頂点を XZ 平面へ投影した凸包 (partId でキャッシュ)。</summary>
@@ -118,14 +160,15 @@ namespace StageMaker
         }
 
         private static Vector2[] GetMinkowskiRegion(
-            StagePartDefinition movingDef, StagePartDefinition obstacleDef)
+            StagePartDefinition movingDef, int movingRotKey,
+            StagePartDefinition obstacleDef, int obstacleRotKey)
         {
             if (movingDef == null || obstacleDef == null) { return null; }
-            string key = movingDef.id + "|" + obstacleDef.id;
+            string key = movingDef.id + "@" + movingRotKey + "|" + obstacleDef.id + "@" + obstacleRotKey;
             if (minkowskiCache.TryGetValue(key, out var cached)) { return cached; }
 
-            var movingHull = GetHull(movingDef);
-            var obstacleHull = GetHull(obstacleDef);
+            var movingHull = GetRotatedHull(movingDef, movingRotKey);
+            var obstacleHull = GetRotatedHull(obstacleDef, obstacleRotKey);
             Vector2[] region = (movingHull != null && obstacleHull != null)
                 ? IceGeometry.MinkowskiRegion(movingHull, obstacleHull)
                 : null;
