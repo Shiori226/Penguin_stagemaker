@@ -45,6 +45,9 @@ namespace StageMaker
         // 氷 (Platform) の重なり判定用に使い回す障害物バッファ
         private readonly List<IcePlacementSolver.PlacedIce> obstacleBuffer = new();
 
+        // 固定 Start/Goal も吸着・重なり判定の対象にするための障害物リスト
+        private readonly List<IcePlacementSolver.PlacedIce> lockedIceObstacles = new();
+
         private Camera editorCamera;
         private GameObject sceneRoot;       // 3D シーンの親 (light, ground, parts)
         private Transform partsRoot;        // 配置パーツの親
@@ -557,6 +560,7 @@ namespace StageMaker
             if (currentData == null || catalog == null) return;
 
             // 固定 Start / Goal をビジュアルとして表示 (DraggablePart を付けないので操作対象にならない)
+            lockedIceObstacles.Clear();
             SpawnLockedFixedPart("PlatformStart", CustomStageBuilder.FixedStartPosition);
             SpawnLockedFixedPart("PlatformGoal", CustomStageBuilder.FixedGoalPosition);
 
@@ -578,6 +582,13 @@ namespace StageMaker
             go.name = def.id + "_Locked";
             DisableGameLogicForEditor(go);
             // DraggablePart は付けないので FindPartUnderCursor の対象外 = ドラッグ不可
+
+            // 固定パーツも氷の吸着・重なり判定の対象にする
+            lockedIceObstacles.Add(new IcePlacementSolver.PlacedIce
+            {
+                center = new Vector2(worldPos.x, worldPos.z),
+                def = def,
+            });
         }
 
         private GameObject SpawnPlacementInScene(CustomStagePartPlacement p)
@@ -855,6 +866,11 @@ namespace StageMaker
             if (partsRoot == null) { return true; }
 
             IcePlacementSolver.CollectPlatformObstacles(partsRoot, exclude, obstacleBuffer);
+            // 固定 Start/Goal も障害物に含める
+            for (int i = 0; i < lockedIceObstacles.Count; i++)
+            {
+                obstacleBuffer.Add(lockedIceObstacles[i]);
+            }
             bool ok = IcePlacementSolver.TryResolve(
                 def,
                 new Vector2(desiredAnchor.x, desiredAnchor.z),
