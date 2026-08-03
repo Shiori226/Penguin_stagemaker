@@ -945,7 +945,7 @@ namespace StageMaker
         public void TryRotatePart(DraggablePart part, float deltaDeg, bool recordUndo)
         {
             if (part == null || part.isHandle || part.placement == null || part.definition == null) { return; }
-            if (part.definition.category != StagePartCategory.Platform) { return; }
+            if (part.definition.category != StagePartCategory.Platform && !part.definition.allowRotation) { return; }
 
             float newRot = Mathf.Repeat(part.placement.rotationY + deltaDeg, 360f);
             if (!TryResolvePlatformAnchor(part.definition, part.placement.worldPosition, newRot,

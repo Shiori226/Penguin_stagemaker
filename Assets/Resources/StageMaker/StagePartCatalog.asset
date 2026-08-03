@@ -181,5 +181,6 @@ MonoBehaviour:
     unique: 0
     spawnOffset: {x: 0, y: 0, z: 0}
     requiresEvenRow: 0
+    allowRotation: 1
     isDirectional: 0
     directionalKind:
