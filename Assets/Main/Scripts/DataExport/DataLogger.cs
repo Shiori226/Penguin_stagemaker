@@ -129,6 +129,15 @@ public sealed class DataLogger : MonoBehaviour
     {
         if (!isTrialInProgress) { return; }
 
+        if (ScoreManager.Instance != null && ScoreManager.Instance.isStageCleared)
+        {
+            RecordEvent(PlayLogEventTypes.StageClear);
+        }
+        else
+        {
+            RecordEvent(PlayLogEventTypes.GameOver);
+        }
+
         RecordEvent(PlayLogEventTypes.TrialEnd);
 
         // 進行中のStream記録と時計を停止
