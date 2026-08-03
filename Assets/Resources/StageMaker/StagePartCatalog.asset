@@ -173,3 +173,13 @@ MonoBehaviour:
     requiresEvenRow: 0
     isDirectional: 1
     directionalKind: Blizzard
+  - id: Wall
+    displayName: Ice Wall
+    category: 3
+    paletteColor: {r: 0.55, g: 0.85, b: 1.0, a: 1}
+    prefab: {fileID: 3565564530016938891, guid: 7f81c9885763d764d829f39fbe487ac4, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    isDirectional: 0
+    directionalKind:
