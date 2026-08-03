@@ -16,6 +16,10 @@ namespace StageMaker
         public const float RotateStepDegrees = 15f;
         private const float PaletteWidth = 640f;
         private const float StageCameraXOffset = -22f;
+        private const float DefaultEditorOrthographicSize = 38f;
+        private const float MinEditorOrthographicSize = 16f;
+        private const float MaxEditorOrthographicSize = 70f;
+        private const float EditorZoomStep = 4f;
 
         // パレットに表示しない (= ユーザが配置できない) 内部パーツ
         // Start / Goal は固定位置・Shark は周辺の海に自動配置
@@ -572,13 +576,46 @@ namespace StageMaker
             editorCamera.transform.position = new Vector3(StageCameraXOffset, 60f, 30f);
             editorCamera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             editorCamera.orthographic = true;
-            editorCamera.orthographicSize = 38f;
+            editorCamera.orthographicSize = DefaultEditorOrthographicSize;
             editorCamera.nearClipPlane = 0.1f;
             editorCamera.farClipPlane = 200f;
             editorCamera.clearFlags = CameraClearFlags.SolidColor;
             editorCamera.backgroundColor = StageMakerUIFactory.TitleBlue;
             // パレットプレビュー用のレイヤー (30) はエディタカメラに映さない
             editorCamera.cullingMask &= ~(1 << 30);
+        }
+
+        private void HandleEditorZoom()
+        {
+            if (IsTextInputFocused() || IsScreenPointBlockedByUi(Input.mousePosition)) { return; }
+
+            float scroll = Input.mouseScrollDelta.y;
+            if (Mathf.Abs(scroll) < 0.01f) { return; }
+
+            Ray focusRay = editorCamera.ScreenPointToRay(Input.mousePosition);
+            bool hasFocusPoint = GroundPlane.Raycast(focusRay, out float focusDistance);
+            Vector3 focusPoint = hasFocusPoint ? focusRay.GetPoint(focusDistance) : Vector3.zero;
+
+            float previousSize = editorCamera.orthographicSize;
+            float nextSize = Mathf.Clamp(
+                previousSize - scroll * EditorZoomStep,
+                MinEditorOrthographicSize,
+                MaxEditorOrthographicSize);
+            if (Mathf.Approximately(previousSize, nextSize)) { return; }
+
+            editorCamera.orthographicSize = nextSize;
+
+            if (hasFocusPoint)
+            {
+                Ray nextFocusRay = editorCamera.ScreenPointToRay(Input.mousePosition);
+                if (GroundPlane.Raycast(nextFocusRay, out float nextFocusDistance))
+                {
+                    Vector3 nextFocusPoint = nextFocusRay.GetPoint(nextFocusDistance);
+                    Vector3 cameraOffset = focusPoint - nextFocusPoint;
+                    cameraOffset.y = 0f;
+                    editorCamera.transform.position += cameraOffset;
+                }
+            }
         }
 
         private static void DrawBoundsGuide(Transform parent)
@@ -1076,6 +1113,8 @@ namespace StageMaker
         {
             if (sceneRoot == null) { return; }
             if (editorCamera == null) { return; }
+
+            HandleEditorZoom();
 
             if (IsUndoRequested())
             {
