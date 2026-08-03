@@ -599,6 +599,7 @@ namespace StageMaker
         public void RebuildScene()
         {
             EnsureSceneInfra();
+            lastSelectedPart = null;
 
             // 既存パーツを破棄
             if (partsRoot != null)
@@ -1062,6 +1063,7 @@ namespace StageMaker
         // ========== マウス入力 (配置済みパーツのドラッグ移動 / 削除) ==========
 
         private DraggablePart currentDrag;
+        private DraggablePart lastSelectedPart;
         private Vector3 currentDragGroundOffset;
         private Vector3 currentDragStartMousePosition;
         private bool currentDragMoved;
@@ -1093,11 +1095,7 @@ namespace StageMaker
             {
                 float step = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                     ? -RotateStepDegrees : RotateStepDegrees;
-                var rotateTarget = currentDrag;
-                if (rotateTarget == null && !IsScreenPointBlockedByUi(Input.mousePosition))
-                {
-                    rotateTarget = FindPartUnderCursor(Input.mousePosition);
-                }
+                var rotateTarget = lastSelectedPart;
                 if (rotateTarget != null)
                 {
                     TryRotatePart(rotateTarget, step, recordUndo: true);
@@ -1114,6 +1112,7 @@ namespace StageMaker
                 // 既存パーツの上をクリック
                 if (part != null)
                 {
+                    lastSelectedPart = part;
                     // 消しゴムは本体パーツのみ削除可 (ハンドル単独では消せない)
                     if (eraserMode)
                     {
@@ -1267,6 +1266,7 @@ namespace StageMaker
         public void RequestDelete(DraggablePart part)
         {
             if (part == null || currentData == null) return;
+            if (lastSelectedPart == part) { lastSelectedPart = null; }
             SaveUndoSnapshot();
             if (part.placement != null) { currentData.parts.Remove(part.placement); }
 
