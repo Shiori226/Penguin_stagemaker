@@ -24,6 +24,7 @@ namespace StageMaker
         public bool unique;
         public Vector3 spawnOffset = Vector3.zero;
         public bool requiresEvenRow;
+        public bool allowRotation;
 
         /// <summary>
         /// true のとき、エディタで配置時に追加で「方向ハンドル」が出現し、

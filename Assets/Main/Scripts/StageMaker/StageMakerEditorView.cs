@@ -16,6 +16,10 @@ namespace StageMaker
         public const float RotateStepDegrees = 15f;
         private const float PaletteWidth = 640f;
         private const float StageCameraXOffset = -22f;
+        private const float DefaultEditorOrthographicSize = 38f;
+        private const float MinEditorOrthographicSize = 16f;
+        private const float MaxEditorOrthographicSize = 70f;
+        private const float EditorZoomStep = 4f;
 
         // パレットに表示しない (= ユーザが配置できない) 内部パーツ
         // Start / Goal は固定位置・Shark は周辺の海に自動配置
@@ -60,6 +64,8 @@ namespace StageMaker
         private Camera editorCamera;
         private GameObject sceneRoot;       // 3D シーンの親 (light, ground, parts)
         private Transform partsRoot;        // 配置パーツの親
+        private bool isCameraPanning;
+        private Vector3 cameraPanStartGroundPoint;
 
         // 地面プレーンと衝突するレイヤー (デフォルトレイヤーで十分)
         private static readonly Plane GroundPlane = new Plane(Vector3.up, Vector3.zero);
@@ -572,13 +578,74 @@ namespace StageMaker
             editorCamera.transform.position = new Vector3(StageCameraXOffset, 60f, 30f);
             editorCamera.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             editorCamera.orthographic = true;
-            editorCamera.orthographicSize = 38f;
+            editorCamera.orthographicSize = DefaultEditorOrthographicSize;
             editorCamera.nearClipPlane = 0.1f;
             editorCamera.farClipPlane = 200f;
             editorCamera.clearFlags = CameraClearFlags.SolidColor;
             editorCamera.backgroundColor = StageMakerUIFactory.TitleBlue;
             // パレットプレビュー用のレイヤー (30) はエディタカメラに映さない
             editorCamera.cullingMask &= ~(1 << 30);
+        }
+
+        private void HandleEditorZoom()
+        {
+            if (IsTextInputFocused() || IsScreenPointBlockedByUi(Input.mousePosition)) { return; }
+
+            float scroll = Input.mouseScrollDelta.y;
+            if (Mathf.Abs(scroll) < 0.01f) { return; }
+
+            Ray focusRay = editorCamera.ScreenPointToRay(Input.mousePosition);
+            bool hasFocusPoint = GroundPlane.Raycast(focusRay, out float focusDistance);
+            Vector3 focusPoint = hasFocusPoint ? focusRay.GetPoint(focusDistance) : Vector3.zero;
+
+            float previousSize = editorCamera.orthographicSize;
+            float nextSize = Mathf.Clamp(
+                previousSize - scroll * EditorZoomStep,
+                MinEditorOrthographicSize,
+                MaxEditorOrthographicSize);
+            if (Mathf.Approximately(previousSize, nextSize)) { return; }
+
+            editorCamera.orthographicSize = nextSize;
+
+            if (hasFocusPoint)
+            {
+                Ray nextFocusRay = editorCamera.ScreenPointToRay(Input.mousePosition);
+                if (GroundPlane.Raycast(nextFocusRay, out float nextFocusDistance))
+                {
+                    Vector3 nextFocusPoint = nextFocusRay.GetPoint(nextFocusDistance);
+                    Vector3 cameraOffset = focusPoint - nextFocusPoint;
+                    cameraOffset.y = 0f;
+                    editorCamera.transform.position += cameraOffset;
+                }
+            }
+        }
+
+        private bool HandleCameraPan()
+        {
+            if (Input.GetMouseButtonDown(2)
+                && !IsScreenPointBlockedByUi(Input.mousePosition)
+                && TryRaycastGround(Input.mousePosition, out Vector3 groundPoint))
+            {
+                isCameraPanning = true;
+                cameraPanStartGroundPoint = groundPoint;
+            }
+
+            if (!isCameraPanning) { return false; }
+
+            if (Input.GetMouseButton(2)
+                && TryRaycastGround(Input.mousePosition, out Vector3 currentGroundPoint))
+            {
+                Vector3 cameraOffset = cameraPanStartGroundPoint - currentGroundPoint;
+                cameraOffset.y = 0f;
+                editorCamera.transform.position += cameraOffset;
+            }
+
+            if (Input.GetMouseButtonUp(2))
+            {
+                isCameraPanning = false;
+            }
+
+            return true;
         }
 
         private static void DrawBoundsGuide(Transform parent)
@@ -599,6 +666,7 @@ namespace StageMaker
         public void RebuildScene()
         {
             EnsureSceneInfra();
+            lastSelectedPart = null;
 
             // 既存パーツを破棄
             if (partsRoot != null)
@@ -945,7 +1013,7 @@ namespace StageMaker
         public void TryRotatePart(DraggablePart part, float deltaDeg, bool recordUndo)
         {
             if (part == null || part.isHandle || part.placement == null || part.definition == null) { return; }
-            if (part.definition.category != StagePartCategory.Platform) { return; }
+            if (part.definition.category != StagePartCategory.Platform && !part.definition.allowRotation) { return; }
 
             float newRot = Mathf.Repeat(part.placement.rotationY + deltaDeg, 360f);
             if (!TryResolvePlatformAnchor(part.definition, part.placement.worldPosition, newRot,
@@ -1062,6 +1130,7 @@ namespace StageMaker
         // ========== マウス入力 (配置済みパーツのドラッグ移動 / 削除) ==========
 
         private DraggablePart currentDrag;
+        private DraggablePart lastSelectedPart;
         private Vector3 currentDragGroundOffset;
         private Vector3 currentDragStartMousePosition;
         private bool currentDragMoved;
@@ -1075,6 +1144,9 @@ namespace StageMaker
             if (sceneRoot == null) { return; }
             if (editorCamera == null) { return; }
 
+            HandleEditorZoom();
+            if (HandleCameraPan()) { return; }
+
             if (IsUndoRequested())
             {
                 Undo();
@@ -1087,17 +1159,24 @@ namespace StageMaker
                 return;
             }
 
+            if (Input.GetMouseButtonDown(1) && !IsTextInputFocused()
+                && !IsScreenPointBlockedByUi(Input.mousePosition))
+            {
+                var part = FindPartUnderCursor(Input.mousePosition);
+                if (part != null && !part.isHandle)
+                {
+                    RequestDelete(part);
+                }
+                return;
+            }
+
             // R キーで氷を回転 (Shift+R で逆回転)。
             // ドラッグ中はその氷、そうでなければカーソル下の氷が対象
             if (Input.GetKeyDown(KeyCode.R) && !IsTextInputFocused())
             {
                 float step = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
                     ? -RotateStepDegrees : RotateStepDegrees;
-                var rotateTarget = currentDrag;
-                if (rotateTarget == null && !IsScreenPointBlockedByUi(Input.mousePosition))
-                {
-                    rotateTarget = FindPartUnderCursor(Input.mousePosition);
-                }
+                var rotateTarget = lastSelectedPart;
                 if (rotateTarget != null)
                 {
                     TryRotatePart(rotateTarget, step, recordUndo: true);
@@ -1114,6 +1193,7 @@ namespace StageMaker
                 // 既存パーツの上をクリック
                 if (part != null)
                 {
+                    lastSelectedPart = part;
                     // 消しゴムは本体パーツのみ削除可 (ハンドル単独では消せない)
                     if (eraserMode)
                     {
@@ -1267,6 +1347,7 @@ namespace StageMaker
         public void RequestDelete(DraggablePart part)
         {
             if (part == null || currentData == null) return;
+            if (lastSelectedPart == part) { lastSelectedPart = null; }
             SaveUndoSnapshot();
             if (part.placement != null) { currentData.parts.Remove(part.placement); }
 
