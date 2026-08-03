@@ -15,7 +15,8 @@ public static class DataExporterDefault
 {
     public static void Export(
         LogItemCache streamCache, LogItemCache snapshotCache,
-        IReadOnlyList<(int s0, int s1, int p0, int p1)> trials,
+        PlayLogEventCache eventCache,
+        IReadOnlyList<(int s0, int s1, int p0, int p1, int e0, int e1)> trials,
         string baseDirName, Action onComplete)
     {
         // �ۑ���p�X�̎擾�̓��C���X���b�h�ōs���K�v������
@@ -26,7 +27,7 @@ public static class DataExporterDefault
         {
             try
             {
-                ExportLogic(streamCache, snapshotCache, trials, baseDirName, savePathBase);
+                ExportLogic(streamCache, snapshotCache, eventCache, trials, baseDirName, savePathBase);
             }
             catch (Exception ex)
             {
@@ -41,7 +42,8 @@ public static class DataExporterDefault
 
     private static void ExportLogic(
         LogItemCache streamCache, LogItemCache snapshotCache,
-        IReadOnlyList<(int s0, int s1, int p0, int p1)> trials,
+        PlayLogEventCache eventCache,
+        IReadOnlyList<(int s0, int s1, int p0, int p1, int e0, int e1)> trials,
         string baseDirName, string savePathBase)
     {
         var files = new List<DataExporter.FileInMemory>();
@@ -54,7 +56,7 @@ public static class DataExporterDefault
         // ���s���Ƃ̃��[�v
         for (int i = 0; i < trials.Count; i++)
         {
-            var (s0, s1, p0, p1) = trials[i];
+            var (s0, s1, p0, p1, e0, e1) = trials[i];
             int trialId = i + 1;
 
             // Stream�f�[�^����

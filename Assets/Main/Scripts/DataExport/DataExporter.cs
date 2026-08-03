@@ -21,7 +21,8 @@ public static class DataExporter
     public static void Export(
         MonoBehaviour runner,
         LogItemCache streamCache, LogItemCache snapshotCache,
-        IReadOnlyList<(int s0, int s1, int p0, int p1)> trials,
+        PlayLogEventCache eventCache,
+        IReadOnlyList<(int s0, int s1, int p0, int p1, int e0, int e1)> trials,
         System.Action onComplete = null)
     {
         string timestamp = GetTimestamp();
@@ -29,10 +30,10 @@ public static class DataExporter
 
 #if UNITY_WEBGL && !UNITY_EDITOR
         // WebGL: メインスレッドでの時分割処理 (Coroutine) に委譲
-        DataExporterWebGL.Export(runner, streamCache, snapshotCache, trials, baseDirName, onComplete);
+        DataExporterWebGL.Export(runner, streamCache, snapshotCache, eventCache, trials, baseDirName, onComplete);
 #else
         // PC, Android, iOS, Mac, Linux などの標準プラットフォーム: 別スレッドでの処理 (Task) に委譲
-        DataExporterDefault.Export(streamCache, snapshotCache, trials, baseDirName, onComplete);
+        DataExporterDefault.Export(streamCache, snapshotCache, eventCache, trials, baseDirName, onComplete);
 #endif
     }
 
