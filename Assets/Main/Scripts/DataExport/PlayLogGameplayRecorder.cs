@@ -80,7 +80,9 @@ public sealed class PlayLogGameplayRecorder : MonoBehaviour
                 reason: "left_ice");
         }
 
-        if (wasAirborne && Vector3.Distance(previousPosition, transform.position) > 1f)
+        if (wasAirborne
+            && grounded
+            && Vector3.Distance(previousPosition, transform.position) > 0.5f)
         {
             logger.RecordEvent(
                 PlayLogEventTypes.Respawn,
