@@ -64,6 +64,9 @@ namespace StageMaker
         private Camera editorCamera;
         private GameObject sceneRoot;       // 3D シーンの親 (light, ground, parts)
         private Transform partsRoot;        // 配置パーツの親
+        private bool isCameraPanning;
+        private Vector3 cameraPanStartGroundPoint;
+        private Vector3 cameraPanStartPosition;
 
         // 地面プレーンと衝突するレイヤー (デフォルトレイヤーで十分)
         private static readonly Plane GroundPlane = new Plane(Vector3.up, Vector3.zero);
@@ -618,6 +621,35 @@ namespace StageMaker
             }
         }
 
+        private bool HandleCameraPan()
+        {
+            if (Input.GetMouseButtonDown(2)
+                && !IsScreenPointBlockedByUi(Input.mousePosition)
+                && TryRaycastGround(Input.mousePosition, out Vector3 groundPoint))
+            {
+                isCameraPanning = true;
+                cameraPanStartGroundPoint = groundPoint;
+                cameraPanStartPosition = editorCamera.transform.position;
+            }
+
+            if (!isCameraPanning) { return false; }
+
+            if (Input.GetMouseButton(2)
+                && TryRaycastGround(Input.mousePosition, out Vector3 currentGroundPoint))
+            {
+                Vector3 cameraOffset = cameraPanStartGroundPoint - currentGroundPoint;
+                cameraOffset.y = 0f;
+                editorCamera.transform.position = cameraPanStartPosition + cameraOffset;
+            }
+
+            if (Input.GetMouseButtonUp(2))
+            {
+                isCameraPanning = false;
+            }
+
+            return true;
+        }
+
         private static void DrawBoundsGuide(Transform parent)
         {
             // 中央線 (Z 方向) の薄いラインを描く
@@ -1115,6 +1147,7 @@ namespace StageMaker
             if (editorCamera == null) { return; }
 
             HandleEditorZoom();
+            if (HandleCameraPan()) { return; }
 
             if (IsUndoRequested())
             {
