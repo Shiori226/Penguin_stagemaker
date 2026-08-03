@@ -66,7 +66,6 @@ namespace StageMaker
         private Transform partsRoot;        // 配置パーツの親
         private bool isCameraPanning;
         private Vector3 cameraPanStartGroundPoint;
-        private Vector3 cameraPanStartPosition;
 
         // 地面プレーンと衝突するレイヤー (デフォルトレイヤーで十分)
         private static readonly Plane GroundPlane = new Plane(Vector3.up, Vector3.zero);
@@ -629,7 +628,6 @@ namespace StageMaker
             {
                 isCameraPanning = true;
                 cameraPanStartGroundPoint = groundPoint;
-                cameraPanStartPosition = editorCamera.transform.position;
             }
 
             if (!isCameraPanning) { return false; }
@@ -639,7 +637,7 @@ namespace StageMaker
             {
                 Vector3 cameraOffset = cameraPanStartGroundPoint - currentGroundPoint;
                 cameraOffset.y = 0f;
-                editorCamera.transform.position = cameraPanStartPosition + cameraOffset;
+                editorCamera.transform.position += cameraOffset;
             }
 
             if (Input.GetMouseButtonUp(2))
