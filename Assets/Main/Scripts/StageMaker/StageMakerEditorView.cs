@@ -1159,6 +1159,17 @@ namespace StageMaker
                 return;
             }
 
+            if (Input.GetMouseButtonDown(1) && !IsTextInputFocused()
+                && !IsScreenPointBlockedByUi(Input.mousePosition))
+            {
+                var part = FindPartUnderCursor(Input.mousePosition);
+                if (part != null && !part.isHandle)
+                {
+                    RequestDelete(part);
+                }
+                return;
+            }
+
             // R キーで氷を回転 (Shift+R で逆回転)。
             // ドラッグ中はその氷、そうでなければカーソル下の氷が対象
             if (Input.GetKeyDown(KeyCode.R) && !IsTextInputFocused())
