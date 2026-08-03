@@ -76,6 +76,14 @@ public static class DataExporterDefault
             {
                 CsvGenerator.AccumulateSnapshotRows(snapshotCache, p0, p1, trialId, allSnapshotRows);
             }
+
+            if (eventCache != null && e1 > e0 && e0 < eventCache.Count)
+            {
+                byte[] content = PlayLogEventCsvGenerator.CreateCSVContent(
+                    eventCache.Events, e0, e1, trialId);
+                string path = $"{baseDirName}/events_trial{trialId}.csv";
+                files.Add(new DataExporter.FileInMemory { Path = path, Content = content });
+            }
         }
 
         // �~�ς���Snapshot���ꊇ�o��
