@@ -29,11 +29,12 @@ public sealed class PlayLogInputRecorder : MonoBehaviour
 
     private void Update()
     {
-        bool moveLeft = Input.GetAxisRaw("Horizontal") < -0.5f;
-        bool moveRight = Input.GetAxisRaw("Horizontal") > 0.5f;
-        bool moveDown = Input.GetAxisRaw("Vertical") < -0.5f;
-        bool moveUp = Input.GetAxisRaw("Vertical") > 0.5f;
-        bool accelerate = Input.GetButton("Submit");
+        bool isPaused = PauseUtility.IsPause;
+        bool moveLeft = !isPaused && Input.GetAxisRaw("Horizontal") < -0.5f;
+        bool moveRight = !isPaused && Input.GetAxisRaw("Horizontal") > 0.5f;
+        bool moveDown = !isPaused && Input.GetAxisRaw("Vertical") < -0.5f;
+        bool moveUp = !isPaused && Input.GetAxisRaw("Vertical") > 0.5f;
+        bool accelerate = !isPaused && Input.GetButton("Submit");
         bool pause = Input.GetButton("Cancel");
 
         DataLogger logger = DataLogger.Instance;
