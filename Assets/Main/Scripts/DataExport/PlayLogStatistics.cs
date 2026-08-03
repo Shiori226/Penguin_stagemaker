@@ -20,6 +20,7 @@ public sealed class PlayLogStatistics : MonoBehaviour
     private bool goalReached;
     private bool stageCleared;
     private bool gameOver;
+    private bool timeUp;
     private double firstFishTime = -1.0;
     private double lastFishTime = -1.0;
     private double firstIceTime = -1.0;
@@ -69,6 +70,9 @@ public sealed class PlayLogStatistics : MonoBehaviour
     [SnapshotData("stats_game_over", Order = 42)]
     private bool GameOver => gameOver
         || (!StageCleared && DataLogger.Instance != null && DataLogger.Instance.IsTrialInProgress);
+
+    [SnapshotData("stats_time_up", Order = 43)]
+    private bool TimeUp => timeUp;
 
     [SnapshotData("stats_first_fish_time", Order = 50)]
     private double FirstFishTime => firstFishTime;
@@ -190,6 +194,9 @@ public sealed class PlayLogStatistics : MonoBehaviour
             case PlayLogEventTypes.GameOver:
                 gameOver = true;
                 break;
+            case PlayLogEventTypes.TimeUp:
+                timeUp = true;
+                break;
         }
     }
 
@@ -209,6 +216,7 @@ public sealed class PlayLogStatistics : MonoBehaviour
         goalReached = false;
         stageCleared = false;
         gameOver = false;
+        timeUp = false;
         firstFishTime = -1.0;
         lastFishTime = -1.0;
         firstIceTime = -1.0;

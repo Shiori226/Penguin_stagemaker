@@ -136,6 +136,7 @@ public sealed class DataLogger : MonoBehaviour
         }
         else
         {
+            RecordEvent(PlayLogEventTypes.TimeUp);
             RecordEvent(PlayLogEventTypes.GameOver);
         }
 
