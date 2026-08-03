@@ -23,15 +23,17 @@ public static class DataExporterWebGL
     public static void Export(
         MonoBehaviour runner,
         LogItemCache streamCache, LogItemCache snapshotCache,
-        IReadOnlyList<(int s0, int s1, int p0, int p1)> trials,
+        PlayLogEventCache eventCache,
+        IReadOnlyList<(int s0, int s1, int p0, int p1, int e0, int e1)> trials,
         string baseDirName, Action onComplete)
     {
-        runner.StartCoroutine(ExportRoutine(streamCache, snapshotCache, trials, baseDirName, onComplete));
+        runner.StartCoroutine(ExportRoutine(streamCache, snapshotCache, eventCache, trials, baseDirName, onComplete));
     }
 
     private static IEnumerator ExportRoutine(
         LogItemCache streamCache, LogItemCache snapshotCache,
-        IReadOnlyList<(int s0, int s1, int p0, int p1)> trials,
+        PlayLogEventCache eventCache,
+        IReadOnlyList<(int s0, int s1, int p0, int p1, int e0, int e1)> trials,
         string baseDirName, Action onComplete)
     {
         var files = new List<DataExporter.FileInMemory>();
@@ -43,7 +45,7 @@ public static class DataExporterWebGL
         // ���s���Ƃ̃��[�v
         for (int i = 0; i < trials.Count; i++)
         {
-            var (s0, s1, p0, p1) = trials[i];
+            var (s0, s1, p0, p1, e0, e1) = trials[i];
             int trialId = i + 1;
 
             // Stream�f�[�^����
@@ -66,6 +68,14 @@ public static class DataExporterWebGL
             if (p1 > p0)
             {
                 CsvGenerator.AccumulateSnapshotRows(snapshotCache, p0, p1, trialId, allSnapshotRows);
+            }
+
+            if (eventCache != null && e1 > e0 && e0 < eventCache.Count)
+            {
+                byte[] content = PlayLogEventCsvGenerator.CreateCSVContent(
+                    eventCache.Events, e0, e1, trialId);
+                string path = $"{baseDirName}/events_trial{trialId}.csv";
+                files.Add(new DataExporter.FileInMemory { Path = path, Content = content });
             }
 
             // ���s���Ƃ�1�t���[���x�e

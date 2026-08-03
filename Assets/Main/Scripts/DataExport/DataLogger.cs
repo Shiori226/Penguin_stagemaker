@@ -14,6 +14,7 @@ public sealed class DataLogger : MonoBehaviour
     private readonly RecordingClock clock = new();
     private readonly LogItemCache streamCache = new();
     private readonly LogItemCache snapshotCache = new();
+    private readonly PlayLogEventCache eventCache = new();
 
     private StreamLogger streamLogger;
     private SnapshotLogger snapshotLogger;
@@ -25,6 +26,8 @@ public sealed class DataLogger : MonoBehaviour
     private bool isTrialInProgress = false; // 「試行中か」を管理する
     private int streamBookmark = 0; // 現在の試行の Stream データ開始インデックス
     private int snapshotBookmark = 0; // 現在の試行の Snapshot データ開始インデックス
+    private int eventBookmark = 0; // 現在の試行のイベントデータ開始インデックス
+    private int eventSequence = 0; // 同一フレーム内のイベント順序
 
     // 確定した試行のデータ範囲（end は排他的）
     private readonly List<TrialRange> committedTrials = new();
@@ -32,6 +35,11 @@ public sealed class DataLogger : MonoBehaviour
     // デバッグ・インスペクタ表示用
     public IReadOnlyList<LogItem> StreamItems => registry.StreamItems;
     public IReadOnlyList<LogItem> SnapshotItems => registry.SnapshotItems;
+    public IReadOnlyList<PlayLogEvent> EventItems => eventCache.Events;
+    public bool IsTrialInProgress => isTrialInProgress;
+    public double ElapsedSeconds => clock.ElapsedSeconds;
+    public int ElapsedFrames => clock.ElapsedFrames;
+    public event System.Action<PlayLogEvent> EventRecorded;
 
     // ===== Unity メッセージ =====
 
@@ -103,11 +111,14 @@ public sealed class DataLogger : MonoBehaviour
         // 3. この試行のデータがキャッシュのどこから始まるかを記録
         streamBookmark = streamLogger.RowCount;
         snapshotBookmark = snapshotLogger.RowCount;
+        eventBookmark = eventCache.Count;
+        eventSequence = 0;
 
         // 4. 時計をリセットして開始
         clock.Start();
 
         isTrialInProgress = true;
+        RecordEvent(PlayLogEventTypes.TrialStart);
         Debug.Log("[DataLogger] 試行を開始しました。");
     }
 
@@ -119,6 +130,18 @@ public sealed class DataLogger : MonoBehaviour
     {
         if (!isTrialInProgress) { return; }
 
+        if (ScoreManager.Instance != null && ScoreManager.Instance.isStageCleared)
+        {
+            RecordEvent(PlayLogEventTypes.StageClear);
+        }
+        else
+        {
+            RecordEvent(PlayLogEventTypes.TimeUp);
+            RecordEvent(PlayLogEventTypes.GameOver);
+        }
+
+        RecordEvent(PlayLogEventTypes.TrialEnd);
+
         // 進行中のStream記録と時計を停止
         streamLogger.StopStream();
         clock.Stop();
@@ -128,10 +151,12 @@ public sealed class DataLogger : MonoBehaviour
         int s1 = streamLogger.RowCount;
         int p0 = snapshotBookmark;
         int p1 = snapshotLogger.RowCount;
+        int e0 = eventBookmark;
+        int e1 = eventCache.Count;
 
-        if (s1 > s0 || p1 > p0) // 何か記録があれば
+        if (s1 > s0 || p1 > p0 || e1 > e0) // 何か記録があれば
         {
-            committedTrials.Add(new TrialRange { s0 = s0, s1 = s1, p0 = p0, p1 = p1 });
+            committedTrials.Add(new TrialRange { s0 = s0, s1 = s1, p0 = p0, p1 = p1, e0 = e0, e1 = e1 });
         }
 
         isTrialInProgress = false;
@@ -144,6 +169,8 @@ public sealed class DataLogger : MonoBehaviour
     public void PauseTrial()
     {
         if (!isTrialInProgress) { return; }
+
+        RecordEvent(PlayLogEventTypes.Pause);
 
         // Stream と Clock の両方をポーズ
         PauseStream();
@@ -162,6 +189,7 @@ public sealed class DataLogger : MonoBehaviour
         // Stream と Clock の両方を再開
         ResumeStream();
         clock.Resume();
+        RecordEvent(PlayLogEventTypes.Resume);
 
         Debug.Log("[DataLogger] 試行を再開しました。");
     }
@@ -179,6 +207,7 @@ public sealed class DataLogger : MonoBehaviour
         // ブックマーク地点までキャッシュを巻き戻す
         streamLogger.TruncateFrom(streamBookmark);
         snapshotLogger.TruncateFrom(snapshotBookmark);
+        eventCache.TruncateFrom(eventBookmark);
 
         isTrialInProgress = false;
         Debug.Log("[DataLogger] 現在の試行を破棄しました。");
@@ -260,6 +289,53 @@ public sealed class DataLogger : MonoBehaviour
         snapshotLogger.Capture(clock.ElapsedSeconds, clock.ElapsedFrames);
     }
 
+    /// <summary>
+    /// 現在の試行にイベントを1件追加する。
+    /// 試行外で呼ばれた場合は無視する。
+    /// </summary>
+    public void RecordEvent(
+        string eventType,
+        string actorId = null,
+        string targetId = null,
+        Vector3? position = null,
+        Vector3? velocityBefore = null,
+        Vector3? velocityAfter = null,
+        Vector3? normal = null,
+        string inputName = null,
+        string inputPhase = null,
+        float? inputValue = null,
+        string itemName = null,
+        string reason = null,
+        string value = null)
+    {
+        if (!isTrialInProgress || string.IsNullOrEmpty(eventType))
+        {
+            return;
+        }
+
+        var item = new PlayLogEvent
+        {
+            time = clock.ElapsedSeconds,
+            frame = clock.ElapsedFrames,
+            sequence = eventSequence++,
+            eventType = eventType,
+            actorId = actorId,
+            targetId = targetId,
+            position = position,
+            velocityBefore = velocityBefore,
+            velocityAfter = velocityAfter,
+            normal = normal,
+            inputName = inputName,
+            inputPhase = inputPhase,
+            inputValue = inputValue,
+            itemName = itemName,
+            reason = reason,
+            value = value,
+        };
+        eventCache.Add(item);
+        EventRecorded?.Invoke(item);
+    }
+
     // ===== API: 収集・出力・初期化 =====
 
     /// <summary>
@@ -304,12 +380,13 @@ public sealed class DataLogger : MonoBehaviour
 
         if (committedTrials.Count > 0)
         {
-            var trialsData = committedTrials.ConvertAll(t => (t.s0, t.s1, t.p0, t.p1));
+            var trialsData = committedTrials.ConvertAll(t => (t.s0, t.s1, t.p0, t.p1, t.e0, t.e1));
 
             DataExporter.Export(
                 this,
                 streamCache,
                 snapshotCache,
+                eventCache,
                 trialsData,
                 () => Debug.Log("[DataLogger] エクスポート処理が完了しました。")
             );
@@ -332,9 +409,12 @@ public sealed class DataLogger : MonoBehaviour
 
         streamCache.Clear();
         snapshotCache.Clear();
+        eventCache.Clear();
         committedTrials.Clear();
         streamBookmark = 0;
         snapshotBookmark = 0;
+        eventBookmark = 0;
+        eventSequence = 0;
         clock.Reset();
     }
 
@@ -375,6 +455,6 @@ public sealed class DataLogger : MonoBehaviour
     /// </summary>
     private struct TrialRange
     {
-        public int s0, s1, p0, p1;
+        public int s0, s1, p0, p1, e0, e1;
     }
 }
