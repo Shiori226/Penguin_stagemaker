@@ -39,6 +39,7 @@ public sealed class DataLogger : MonoBehaviour
     public bool IsTrialInProgress => isTrialInProgress;
     public double ElapsedSeconds => clock.ElapsedSeconds;
     public int ElapsedFrames => clock.ElapsedFrames;
+    public event System.Action<PlayLogEvent> EventRecorded;
 
     // ===== Unity メッセージ =====
 
@@ -311,7 +312,7 @@ public sealed class DataLogger : MonoBehaviour
             return;
         }
 
-        eventCache.Add(new PlayLogEvent
+        var item = new PlayLogEvent
         {
             time = clock.ElapsedSeconds,
             frame = clock.ElapsedFrames,
@@ -329,7 +330,9 @@ public sealed class DataLogger : MonoBehaviour
             itemName = itemName,
             reason = reason,
             value = value,
-        });
+        };
+        eventCache.Add(item);
+        EventRecorded?.Invoke(item);
     }
 
     // ===== API: 収集・出力・初期化 =====
