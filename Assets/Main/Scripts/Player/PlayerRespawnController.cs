@@ -9,70 +9,98 @@ public enum RespawnMode
 public class PlayerRespawnController : MonoBehaviour
 {
     private PlayerData playerData;
-
-    private GameObject platformsRoot;
     private PlatformController[] platformControllers;
+    private PlatformController currentCheckpoint;
+    private BoxCollider playerCollider;
 
-    // ‰Šú‰»
+    // åˆæœŸåŒ–
     public void Initialize(PlayerData playerData)
     {
         this.playerData = playerData;
 
-        if (platformsRoot == null)
+        // The sliding penguin always uses per-ice checkpoint respawning.
+        // Keep RespawnMode for compatibility with existing UI and data.
+        this.playerData.respawnMode = RespawnMode.NearestCheckPoint;
+        playerCollider = GetComponent<BoxCollider>();
+        platformControllers = FindObjectsOfType<PlatformController>();
+
+        foreach (PlatformController platform in platformControllers)
         {
-            platformsRoot = GameObject.Find("Platforms");
+            platform.ResetForNewPlay();
         }
-        platformControllers = platformsRoot.GetComponentsInChildren<PlatformController>();
+
+        currentCheckpoint = FindStartPlatform();
+        if (currentCheckpoint != null)
+        {
+            currentCheckpoint.MarkReached(false);
+        }
     }
 
-    // Å‚à‹ß‚¢Platform‚ÌqƒIƒuƒWƒFƒNƒg‚ÌˆÊ’u‚ÉƒŠƒXƒ|[ƒ“‚·‚é
+    // æœ€æ–°ã®ãƒã‚§ãƒƒã‚¯ãƒã‚¤ãƒ³ãƒˆã®ä¸­å¤®ã«ãƒªã‚¹ãƒãƒ¼ãƒ³ã™ã‚‹
     public void Respawn()
     {
-        Transform closestPlatform = GetClosestPlatform(playerData.respawnMode);
-        Vector3 respawnPos = GetClosestRespawnPoint(closestPlatform);
+        if (!TryGetRespawnPosition(out Vector3 respawnPos))
+        {
+            respawnPos = Vector3.up;
+        }
 
-        transform.position = respawnPos;
-        transform.rotation = Quaternion.identity;
+        transform.SetPositionAndRotation(respawnPos, Quaternion.LookRotation(Vector3.forward, Vector3.up));
     }
 
-    // Å‚à‹ß‚¢Platform‚ğæ“¾‚·‚é
-    // RespawnMode‚É‚æ‚Á‚ÄAƒ`ƒFƒbƒNƒ|ƒCƒ“ƒg‚ÌPlatform‚Ì‚İ‚Éi‚é
-    private Transform GetClosestPlatform(RespawnMode respawnMode)
+    public void RegisterCheckpoint(PlatformController platform)
     {
-        Transform closest = null;
-        float minDistance = float.MaxValue;
-        foreach (var pc in platformControllers)
+        if (platform == null || !platform.IsCheckPoint)
         {
-            if (!pc.IsReached) { continue; }
-            if (respawnMode == RespawnMode.NearestCheckPoint && !pc.IsCheckPoint) { continue; }
-
-            float dist = Vector3.Distance(transform.position, pc.transform.position);
-            if (dist < minDistance)
-            {
-                minDistance = dist;
-                closest = pc.transform;
-            }
+            return;
         }
-        return closest;
+
+        currentCheckpoint = platform;
     }
 
-    // w’è‚µ‚½Platform‚ÌqƒIƒuƒWƒFƒNƒg‚Ì’†‚ÅAÅ‚à‹ß‚¢ˆÊ’u‚ğæ“¾‚·‚é
-    private Vector3 GetClosestRespawnPoint(Transform platform)
+    public bool TryGetRespawnPosition(out Vector3 respawnPosition)
     {
-        if (platform == null) { return Vector3.up; }
-        Vector3 closestPoint = default;
-
-        float minDistance = float.MaxValue;
-        foreach (Transform point in platform)
+        if (currentCheckpoint == null)
         {
-            float dist = Vector3.Distance(transform.position, point.position);
-            if (dist < minDistance)
+            currentCheckpoint = FindStartPlatform();
+        }
+
+        if (currentCheckpoint == null)
+        {
+            respawnPosition = default;
+            return false;
+        }
+
+        respawnPosition = currentCheckpoint.GetCenterRespawnPosition(playerCollider);
+        return true;
+    }
+
+    public PlatformController GetCurrentCheckpoint()
+    {
+        return currentCheckpoint;
+    }
+
+    private PlatformController FindStartPlatform()
+    {
+        GameObject startObject = GameObject.FindGameObjectWithTag("Start");
+        if (startObject != null)
+        {
+            PlatformController startPlatform = startObject.GetComponent<PlatformController>();
+            if (startPlatform != null)
             {
-                minDistance = dist;
-                closestPoint = point.position;
+                return startPlatform;
             }
         }
-        return closestPoint;
+
+        PlatformController firstPlatform = null;
+        foreach (PlatformController platform in platformControllers)
+        {
+            if (firstPlatform == null || platform.transform.position.z < firstPlatform.transform.position.z)
+            {
+                firstPlatform = platform;
+            }
+        }
+
+        return firstPlatform;
     }
 
     public RespawnMode GetRespawnMode()
