@@ -5,7 +5,7 @@
         "deceleration" : 0.1,
         "speedUpDuration" : 0.7,
         "speedUpMultiplier" : 3.0,
-        "respawnMode" : "NearestPlatform",
+        "respawnMode" : "NearestCheckPoint",
         "respawnDelay" : 1.0
     }
 }

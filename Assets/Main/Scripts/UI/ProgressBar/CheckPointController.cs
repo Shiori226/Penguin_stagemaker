@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class CheckPointController : MonoBehaviour
 {
-    [Header("ƒ`ƒFƒbƒNƒ|ƒCƒ“ƒg")]
+    [Header("ãƒã‚§ãƒƒã‚¯ãƒã‚¤ãƒ³ãƒˆ")]
     [SerializeField] private GameObject checkPointPrefab;
 
     [SerializeField]
@@ -17,26 +17,26 @@ public class CheckPointController : MonoBehaviour
 
     private void SortCheckPoints()
     {
-        checkPoints = checkPoints.Where(t => t != null).ToList(); // null—v‘f‚Í”rœ
+        checkPoints = checkPoints.Where(t => t != null).ToList(); // nullè¦ç´ ã¯æ’é™¤
         checkPoints.Sort((a, b) => a.transform.position.z.CompareTo(b.transform.position.z));
     }
 
     public void GenerateCheckPointUI(RectTransform rectTransform, Vector3 startPos, float stageDistance)
     {
-        // Check Points ‚ğ¸‡‚Éƒ\[ƒg
+        // Check Points ã‚’æ˜‡é †ã«ã‚½ãƒ¼ãƒˆ
         SortCheckPoints();
 
-        // Progress Bar ‚Ì‚‚³
+        // Progress Bar ã®é«˜ã•
         float progressBarHeight = rectTransform.rect.height;
 
         foreach (var checkPoint in checkPoints)
         {
             GameObject generatedCheckPoint = Instantiate(checkPointPrefab, transform);
 
-            // ƒXƒe[ƒW‘S‘Ì‚Ì’·‚³‚©‚çŒ©‚½ Check Point ‚ÌˆÊ’u‚ğæ“¾
+            // ã‚¹ãƒ†ãƒ¼ã‚¸å…¨ä½“ã®é•·ã•ã‹ã‚‰è¦‹ãŸ Check Point ã®ä½ç½®ã‚’å–å¾—
             float checkPointProgress = Vector3.Distance(checkPoint.transform.position, startPos) / stageDistance;
 
-            // ¶¬‚·‚é Check Point ‚ÉAÀÛ‚ÉƒXƒe[ƒW‚É’u‚©‚ê‚Ä‚¢‚é Check Point ‚ÌˆÊ’uŠÖŒW‚ğ”½‰f
+            // ç”Ÿæˆã™ã‚‹ Check Point ã«ã€å®Ÿéš›ã«ã‚¹ãƒ†ãƒ¼ã‚¸ã«ç½®ã‹ã‚Œã¦ã„ã‚‹ Check Point ã®ä½ç½®é–¢ä¿‚ã‚’åæ˜ 
             RectTransform checkPointTransform = generatedCheckPoint.GetComponent<RectTransform>();
             Vector2 checkPointPosition = checkPointTransform.anchoredPosition;
             checkPointPosition.y = progressBarHeight * checkPointProgress;
@@ -44,20 +44,26 @@ public class CheckPointController : MonoBehaviour
 
             if (generatedCheckPoint.TryGetComponent(out CheckPointColorSwitcher checkPointUIController))
             {
-                // ¶¬‚µ‚½ Check Point ‚ğƒLƒƒƒbƒVƒ…‚µ‚Ä‚¨‚­
-                checkPointDict.Add(checkPoint, checkPointUIController);
+                // ç”Ÿæˆã—ãŸ Check Point ã‚’ã‚­ãƒ£ãƒƒã‚·ãƒ¥ã—ã¦ãŠã
+                checkPointDict[checkPoint] = checkPointUIController;
+                checkPointUIController.SetStatus(checkPoint.IsReached);
             }
         }
     }
 
     public void Initialize()
     {
+        checkPoints.Clear();
+        checkPointDict.Clear();
+
         if (platformsRoot == null)
         {
             platformsRoot = GameObject.Find("Platforms");
         }
 
-        PlatformController[] platformControllers = platformsRoot.GetComponentsInChildren<PlatformController>();
+        // Moving ice is generated under Gimmicks, so collect every platform
+        // in the current scene rather than only the Platforms group.
+        PlatformController[] platformControllers = FindObjectsOfType<PlatformController>();
 
         foreach (PlatformController platformController in platformControllers)
         {

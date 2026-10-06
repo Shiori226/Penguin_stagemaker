@@ -226,7 +226,7 @@ MonoBehaviour:
     deceleration: 0.1
     speedUpDuration: 0.7
     speedUpMultiplier: 3
-    respawnMode: 0
+    respawnMode: 1
     respawnDelay: 1
 --- !u!114 &7754422335644705509
 MonoBehaviour:
