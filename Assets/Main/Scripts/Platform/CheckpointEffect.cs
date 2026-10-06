@@ -25,7 +25,7 @@ public class CheckpointEffect : MonoBehaviour
 
         var emission = particles.emission;
         emission.rateOverTime = 0f;
-        emission.SetBursts(new ParticleSystem.Burst(0f, 14));
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 14) });
 
         var shape = particles.shape;
         shape.shapeType = ParticleSystemShapeType.Sphere;
