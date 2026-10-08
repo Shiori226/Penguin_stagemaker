@@ -184,3 +184,14 @@ MonoBehaviour:
     allowRotation: 1
     isDirectional: 0
     directionalKind:
+  - id: Checkpoint
+    displayName: Checkpoint
+    category: 4
+    paletteColor: {r: 0.25, g: 0.85, b: 1.0, a: 1}
+    prefab: {fileID: 1260000000000000, guid: ebbf88c5638b4686802a2f8229f188a2, type: 3}
+    unique: 0
+    spawnOffset: {x: 0, y: 0, z: 0}
+    requiresEvenRow: 0
+    allowRotation: 0
+    isDirectional: 0
+    directionalKind:
